@@ -1,75 +1,117 @@
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function SplashScreen() {
+  // Auto-navigate after a delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.replace('/(tabs)'); // Navigate to the main app screen
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <View style={styles.logoContainer}>
+        <View style={styles.logoCircle}>
+          <Image
+            source={require('@/assets/images/bus-icon.svg')} // Make sure to add this icon to assets
+            style={styles.busIcon}
+            contentFit="contain"
+          />
+           
+        </View>
+      </View>
+      
+      <Text style={styles.title}>Busmate LK</Text>
+      <Text style={styles.subtitle}>Conductor Version</Text>
+      
+      <Text style={styles.tagline}>Your Smart Ride Starts Here</Text>
+      
+      <ActivityIndicator 
+        size="large" 
+        color="#FFFFFF" 
+        style={styles.loadingIndicator} 
+      />
+      
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Provided by Busmate LK (Pvt)Ltd</Text>
+        
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#0066FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 40,
+  },
+  logoContainer: {
+    marginBottom: 20,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  busIcon: {
+    width: 50,
+    height: 50,
+  },
+  
+  title: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  subtitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginBottom: 30,
+    opacity: 0.9,
+  },
+  tagline: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    marginBottom: 30,
+  },
+  loadingIndicator: {
+    marginBottom: 40,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  dotsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 4,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  activeDot: {
+    backgroundColor: '#FFFFFF',
   },
 });

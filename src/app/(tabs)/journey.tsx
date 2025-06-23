@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function JourneyScreen() {
   return (
@@ -10,14 +11,16 @@ export default function JourneyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity style={styles.backButton}
+           onPress={() => { router.push('/(tabs)/home'); }}
+          >
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Assigned Journey</Text>
         </View>
-        <TouchableOpacity>
+        {/* <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
       
       <ScrollView style={styles.container}>
@@ -137,13 +140,17 @@ export default function JourneyScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsContainer}>
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity style={styles.actionItem}
+           onPress={() => { router.push('/seatView'); }}
+            >
               <View style={styles.actionIconContainer}>
                 <FontAwesome5 name="ticket-alt" size={18} color="#0066FF" />
               </View>
               <Text style={styles.actionLabel}>Bookings</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity style={styles.actionItem}
+             onPress={() => { router.push('/stopView'); }}
+            >
               <View style={styles.actionIconContainer}>
                 <Ionicons name="location" size={18} color="#0066FF" />
               </View>
@@ -218,6 +225,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F7',
   },
   header: {
+    marginTop: StatusBar.currentHeight,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

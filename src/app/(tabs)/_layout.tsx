@@ -1,9 +1,9 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -13,24 +13,22 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      
+     
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
+        
+        
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-          },
-          default: {},
-        }),
       }}>
+      {/* Your tab screens remain the same */}
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="house" color={color} />
+            <Ionicons name="home" size={22} color={color} />
           ),
         }}
       />
@@ -39,7 +37,7 @@ export default function TabLayout() {
         options={{
           title: 'Tickets',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="doc.text" color={color} />
+            <Ionicons name="document-text" size={22} color={color} />
           ),
         }}
       />
@@ -48,7 +46,7 @@ export default function TabLayout() {
         options={{
           title: 'Journey',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="map" color={color} />
+            <Ionicons name="map" size={22} color={color} />
           ),
         }}
       />
@@ -57,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="person" color={color} />
+            <Ionicons name="person" size={22} color={color} />
           ),
         }}
       />

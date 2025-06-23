@@ -7,7 +7,7 @@ export default function SplashScreen() {
   // Auto-navigate after a delay
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/login'); // Navigate to the main app screen
+      router.replace('/Authentication/login'); // Navigate to the main app screen
     }, 3000);
     
     return () => clearTimeout(timer);

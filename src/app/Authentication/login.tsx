@@ -1,27 +1,53 @@
-import React, { useState } from 'react';
+import FingerprintModal from '@/components/Login/FingerprintModel';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  Pressable,
-  SafeAreaView 
+  SafeAreaView,
+  Animated,
+  Dimensions,
+  Keyboard,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [showFingerprint, setShowFingerprint] = useState(false);
+  
 
   const handleSignIn = () => {
     // Implement your authentication logic here
     if (username && password) {
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)');
     }
+  };
+
+  // Handle fingerprint authentication
+  const handleFingerprintAuth = () => {
+    setShowFingerprint(true);
+  };
+
+  // Handle cancel fingerprint
+  const handleCancelFingerprint = () => {
+    setShowFingerprint(false);
+  };
+
+  // Simulate fingerprint authentication success
+  const simulateAuthentication = () => {
+    // Simulate scanning delay
+    setTimeout(() => {
+      setShowFingerprint(false);
+      router.replace('/(tabs)');
+    }, 1500);
   };
 
   return (
@@ -89,25 +115,46 @@ export default function LoginScreen() {
           </View>
           
           {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-            <Text style={styles.signInText}>SIGN IN</Text>
+          <TouchableOpacity style={styles.signInButton} 
+           onPress={() => { router.push('/(tabs)/home'); }}
+          >
+            <Ionicons name="lock-closed-outline" size={16} color="white" style={{marginRight: 8}} />
+            <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
           
-          {/* Fingerprint */}
-          <View style={styles.fingerprintContainer}>
-            <Image
-              style={styles.fingerprintImage}
-              source={require('@/assets/images/fingerprint.svg')} // Add this image to your assets
-              contentFit="contain"
-            />
+          {/* OR Separator */}
+          <View style={styles.orContainer}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.orLine} />
           </View>
+          
+          {/* Fingerprint Button */}
+          <TouchableOpacity 
+            style={styles.fingerprintContainer} 
+            onPress={handleFingerprintAuth}
+          >
+            <Ionicons name="finger-print" size={60} color="#0066FF" />
+          </TouchableOpacity>
         </View>
         
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2024 Busmate LK. All rights reserved.</Text>
+                    <Text style={styles.copyright}>© {new Date().getFullYear()} Busmate LK. All rights reserved.</Text>
+          
+
         </View>
       </View>
+      <FingerprintModal
+  visible={showFingerprint}
+  onCancel={handleCancelFingerprint}
+  onAuthenticate={() => {
+    // You can call simulateAuthentication() or your real auth logic here
+    setShowFingerprint(false);
+    router.replace('/(tabs)/home');
+  }}
+/>
+     
     </SafeAreaView>
   );
 }
@@ -115,24 +162,25 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    
   },
   card: {
     backgroundColor: 'white',
-    borderRadius: 10,
+    // borderRadius: 10,
     width: '100%',
-    maxWidth: 400,
+    // maxWidth: 400,
     overflow: 'hidden',
-    elevation: 3,
+    // elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   header: {
+    
     backgroundColor: '#0066FF',
     padding: 16,
     flexDirection: 'row',
@@ -175,8 +223,10 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
   },
   input: {
     flex: 1,
@@ -218,31 +268,53 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     backgroundColor: '#0066FF',
-    borderRadius: 4,
+    borderRadius: 8,
     width: '100%',
     padding: 12,
     alignItems: 'center',
     marginVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   signInText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
   },
-  fingerprintContainer: {
-    marginTop: 16,
+  orContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    marginVertical: 16,
   },
-  fingerprintImage: {
-    width: 48,
-    height: 48,
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  orText: {
+    marginHorizontal: 16,
+    color: '#999',
+    fontSize: 14,
+  },
+  fingerprintContainer: {
+    marginTop: 8,
+    marginBottom: 36,
   },
   footer: {
     padding: 16,
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 10,
+    fontSize: 20,
     color: '#999',
+    marginBottom: 30,
+  },
+  copyright: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    position: 'absolute',
+    bottom: 40,
+    textAlign: 'center',
   }
 });

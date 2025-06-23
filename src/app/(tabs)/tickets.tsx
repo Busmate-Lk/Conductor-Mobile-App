@@ -9,6 +9,7 @@ import {
   StatusBar 
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function TicketsScreen() {
   const [fromLocation, setFromLocation] = useState('Colombo');
@@ -39,11 +40,15 @@ export default function TicketsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton}
+        onPress={() => { router.push('/(tabs)/home'); }}
+        >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Virtual Ticketing Machine</Text>
-        <TouchableOpacity style={styles.qrButton}>
+        <TouchableOpacity style={styles.qrButton}
+         onPress={() => { router.push('/Ticket/qrScanner'); }}
+        >
           <MaterialIcons name="qr-code-scanner" size={24} color="white" />
         </TouchableOpacity>
       </View>
@@ -110,7 +115,13 @@ export default function TicketsScreen() {
         </View>
 
         {/* Issue Ticket Button */}
-        <TouchableOpacity style={styles.issueButton} onPress={issueTicket}>
+        <TouchableOpacity
+          style={styles.issueButton}
+          onPress={() => {
+            issueTicket();
+            router.push('/Ticket/ticketPrintingpage');
+          }}
+        >
           <FontAwesome5 name="ticket-alt" size={20} color="white" style={styles.ticketIcon} />
           <Text style={styles.issueButtonText}>Issue Ticket</Text>
         </TouchableOpacity>
@@ -129,7 +140,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#0066FF',
+     backgroundColor: '#22C55E',
     paddingVertical: 16,
     paddingHorizontal: 16,
   },

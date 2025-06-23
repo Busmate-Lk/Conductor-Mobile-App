@@ -10,6 +10,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function ProfileScreen() {
   const userInfo = {
@@ -24,13 +25,13 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
       
       {/* Header */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Profile</Text>
         <View style={styles.emptySpace} />
-      </View>
+      </View> */}
       
       <ScrollView style={styles.container}>
         <View style={styles.profileCard}>
@@ -80,12 +81,31 @@ export default function ProfileScreen() {
         </View>
         
         {/* Edit Profile Button */}
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => {
+            // Use navigation to go to the edit_profile page
+            // Assumes you are using React Navigation
+            // and that 'EditProfile' is the route name for app/profile/edit_profile
+            // If using Expo Router, use router.push('/profile/edit_profile')
+            // Example below uses Expo Router:
+            // import { useRouter } from 'expo-router' at the top of the file
+
+            // Place this hook at the top of your component:
+            // const router = useRouter();
+
+            // Then use:
+            router.push('/profile/edit_profile');
+          }}
+        >
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
         
         {/* Change Password Section */}
-        <TouchableOpacity style={styles.passwordSection}>
+        <TouchableOpacity
+          style={styles.passwordSection}
+          onPress={() => router.push('/profile/change_password')}
+        >
           <View style={styles.passwordLeft}>
             <View style={styles.lockIconContainer}>
               <Ionicons name="lock-closed" size={20} color="#666" />
@@ -104,6 +124,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: {
+    marginTop: StatusBar.currentHeight ,
     flex: 1,
     backgroundColor: '#F5F7FA',
   },

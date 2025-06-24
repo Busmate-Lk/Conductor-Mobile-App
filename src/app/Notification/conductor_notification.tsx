@@ -197,9 +197,9 @@ export default function NotificationsScreen() {
       </View> */}
 
       {/* Subtitle */}
-      <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitle}>Important updates for conductors</Text>
-      </View>
+      {/* <View style={styles.subtitleContainer}> */}
+        {/* <Text style={styles.subtitle}>Important updates for conductors</Text> */}
+      {/* </View> */}
       
       {/* Search Box */}
       <View style={styles.searchContainer}>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#0066FF',
+    backgroundColor: '#ffffff',
   },
   backButton: {
     padding: 4,

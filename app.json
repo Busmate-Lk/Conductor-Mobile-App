@@ -24,6 +24,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow BusMate to access your camera to scan QR codes."
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -34,7 +40,12 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-barcode-scanner"
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow BusMate to access your camera to scan QR codes."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

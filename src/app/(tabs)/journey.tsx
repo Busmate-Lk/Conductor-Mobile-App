@@ -1,12 +1,18 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import React, { use } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar,useColorScheme } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
 export default function JourneyScreen() {
+
+  const colorScheme =useColorScheme();
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* Adjust status bar based on color scheme */}
+      <StatusBar 
+        barStyle={colorScheme === 'dark' ? "light-content" : "dark-content"} 
+        backgroundColor={colorScheme === 'dark' ? "black" : "white"}
+      />
       
       {/* Header */}
       <View style={styles.header}>
@@ -16,7 +22,7 @@ export default function JourneyScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Assigned Journey</Text>
+          <Text style={styles.headerTitle}>Ongoing Journey</Text>
         </View>
         {/* <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={20} color="#333" />
@@ -141,7 +147,7 @@ export default function JourneyScreen() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsContainer}>
             <TouchableOpacity style={styles.actionItem}
-           onPress={() => { router.push('/seatView'); }}
+           onPress={() => { router.push('/Journey/seatView'); }}
             >
               <View style={styles.actionIconContainer}>
                 <FontAwesome5 name="ticket-alt" size={18} color="#0066FF" />
@@ -149,7 +155,7 @@ export default function JourneyScreen() {
               <Text style={styles.actionLabel}>Bookings</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionItem}
-             onPress={() => { router.push('/stopView'); }}
+             onPress={() => { router.push('/Journey/stopView'); }}
             >
               <View style={styles.actionIconContainer}>
                 <Ionicons name="location" size={18} color="#0066FF" />

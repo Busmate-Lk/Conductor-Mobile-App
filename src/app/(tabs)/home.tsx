@@ -40,7 +40,7 @@ export default function HomeScreen() {
     {
       label: 'Notify Passengers',
       icon: 'notifications',
-      onPress: () => router.push('/Journey/notify_passengers'),
+      onPress: () => router.push('/Passenger_Notifications/notify_passengers'),
     },
     {
       label: 'Tickets',
@@ -94,7 +94,7 @@ export default function HomeScreen() {
             style={styles.iconButton}
             onPress={() => { router.push('/Notification/conductor_notification'); }}
           >
-            <Ionicons name="notifications-outline" size={22} color="black" />
+            <Ionicons name="notifications-outline" size={22} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => { router.push('/(tabs)/profile'); }}
@@ -212,12 +212,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#0066FF',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     zIndex: 10,
     elevation: 3, // For Android shadow
-    shadowColor: '#000', // iOS shadow
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -234,16 +233,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 28,
-    height: 28,
+    width: 35,
+    height: 35,
     backgroundColor: '#0066FF',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    color: 'white',
     marginLeft: 8,
   },
   headerRight: {
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     marginRight: 16,
+    color: 'white',
   },
   profileImage: {
     width: 32,
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
   },
 
    shiftButton: {
-    backgroundColor: '#004CFF', // Primary blue as requested
+    backgroundColor: '#0066FF', // Primary blue as requested
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',

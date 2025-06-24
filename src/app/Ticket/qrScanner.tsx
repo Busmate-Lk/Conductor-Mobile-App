@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,10 @@ import {
   StatusBar,
   Dimensions,
   Alert,
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Camera } from 'expo-camera';
-import { BarCodeScanner, BarCodeScannerResult } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 
 // Define types for scan history items
@@ -33,8 +33,8 @@ interface PassengerDetails {
 }
 
 export default function QRScannerScreen() {
-  // Camera permission states
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  // Camera permission state using the new hooks
+  const [permission, requestPermission] = useCameraPermissions();
   
   // Scanning states
   const [scanned, setScanned] = useState(false);
@@ -61,28 +61,16 @@ export default function QRScannerScreen() {
     }
   ]);
 
-  // Fixed Camera ref type
-  const cameraRef = useRef(null);
-
-  // Request camera permissions on component mount
+  // Request camera permissions if not already granted
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          "Permission Required",
-          "Camera permission is needed to scan QR codes",
-          [{ text: "OK", onPress: () => router.back() }]
-        );
-      }
-    })();
-  }, []);
+    if (permission && !permission.granted) {
+      requestPermission();
+    }
+  }, [permission]);
 
-  // Handle barcode scanning with correct type
-  const handleBarCodeScanned = ({ data }: BarCodeScannerResult) => {
-    if (!scanning) return;
+  // Handle barcode scanning - updated to match CameraView's format
+  const handleBarCodeScanned = ({data, type}: {data: string, type: string}) => {
+    if (!scanning || scanned) return;
     
     setScanned(true);
     setScanning(false);
@@ -145,6 +133,15 @@ export default function QRScannerScreen() {
           ...prevScans.slice(0, 9)
         ]);
       }
+      
+      // Enable scanning again after a delay
+      setTimeout(() => {
+        if (scanStatus !== 'success') {
+          setScanned(false);
+          setScanning(true);
+        }
+      }, 2000);
+      
     }, 1500); // Simulate network delay
   };
 
@@ -153,6 +150,7 @@ export default function QRScannerScreen() {
     setScanned(false);
     setScanning(true);
     setScanStatus('ready');
+    setPassengerDetails(null);
   };
 
   // Handle ticket validation
@@ -170,7 +168,7 @@ export default function QRScannerScreen() {
   // View scan history
   const handleViewScanHistory = () => {
     // Navigate to scan history page
-    router.push('/scanHistory');
+    router.push('/Ticket/scanHistory');
   };
 
   // Format time ago
@@ -226,7 +224,8 @@ export default function QRScannerScreen() {
     }
   };
 
-  if (hasPermission === null) {
+  // If we don't have permission info yet
+  if (!permission) {
     return (
       <View style={styles.container}>
         <Text>Requesting camera permission...</Text>
@@ -234,11 +233,15 @@ export default function QRScannerScreen() {
     );
   }
 
-  if (hasPermission === false) {
+  // If permission is not granted
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text>No access to camera</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+        <Text style={styles.permissionText}>Camera permission is needed to scan QR codes</Text>
+        <TouchableOpacity style={styles.button} onPress={requestPermission}>
+          <Text style={styles.buttonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.backButton]} onPress={() => router.back()}>
           <Text style={styles.buttonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -250,30 +253,30 @@ export default function QRScannerScreen() {
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      {/* <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>QR Scanner</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
+        <View style={styles.menuButton} />
+      </View> */}
       
-      {/* Camera View */}
+      {/* Camera View - Using CameraView with only back camera */}
       <View style={styles.cameraContainer}>
-        <Camera
-          ref={cameraRef}
+        <CameraView
           style={styles.camera}
-          type={Camera.Constants.Type.back}
-          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-          barCodeScannerSettings={{
-            barCodeTypes: [BarCodeScanner.Constants.BarCodeType.qr],
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"]
           }}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         >
           <View style={styles.scanOverlay}>
             <View style={styles.scanFrame}>
+              <View style={styles.cornerTL} />
               <View style={styles.cornerTR} />
+              <View style={styles.cornerBL} />
+              <View style={styles.cornerBR} />
             </View>
           </View>
           
@@ -290,123 +293,124 @@ export default function QRScannerScreen() {
               Hold steady for automatic scanning
             </Text>
           </View>
-        </Camera>
+        </CameraView>
       </View>
       
       {/* Scan Status */}
       {renderScanStatus()}
       
-      {/* Passenger Details */}
-      <View style={styles.detailsContainer}>
-        <View style={styles.detailsHeader}>
-          <Text style={styles.detailsTitle}>Passenger Details</Text>
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingText}>
-              {scanStatus === 'scanning' ? 'Scanning...' : 'Pending Scan'}
+      <ScrollView style={styles.detailsScrollView}>
+        {/* Passenger Details */}
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailsHeader}>
+            <Text style={styles.detailsTitle}>Passenger Details</Text>
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingText}>
+                {scanStatus === 'scanning' ? 'Scanning...' : 'Pending Scan'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Name</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.name || '–'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Seat Number</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.seatNumber || '–'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Payment Status</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.paymentStatus || '–'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Ticket ID</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.ticketId || '–'}
             </Text>
           </View>
         </View>
         
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Name</Text>
-          <Text style={styles.detailValue}>
-            {passengerDetails?.name || '–'}
-          </Text>
-        </View>
+        {/* Validate Button */}
+        <TouchableOpacity 
+          style={[
+            styles.validateButton,
+            (!passengerDetails || scanStatus === 'scanning') && styles.disabledButton
+          ]} 
+          onPress={handleValidateTicket}
+          disabled={!passengerDetails || scanStatus === 'scanning'}
+        >
+          <Ionicons name="checkmark" size={20} color="white" />
+          <Text style={styles.validateButtonText}>Validate Ticket</Text>
+        </TouchableOpacity>
         
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Seat Number</Text>
-          <Text style={styles.detailValue}>
-            {passengerDetails?.seatNumber || '–'}
-          </Text>
-        </View>
+        {/* Scan History Button */}
+        <TouchableOpacity 
+          style={styles.historyButton} 
+          onPress={handleViewScanHistory}
+        >
+          <Ionicons name="time" size={20} color="#555" />
+          <Text style={styles.historyButtonText}>Scan History</Text>
+        </TouchableOpacity>
         
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Payment Status</Text>
-          <Text style={styles.detailValue}>
-            {passengerDetails?.paymentStatus || '–'}
-          </Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Ticket ID</Text>
-          <Text style={styles.detailValue}>
-            {passengerDetails?.ticketId || '–'}
-          </Text>
-        </View>
-      </View>
-      
-      {/* Validate Button */}
-      <TouchableOpacity 
-        style={[
-          styles.validateButton,
-          (!passengerDetails || scanStatus === 'scanning') && styles.disabledButton
-        ]} 
-        onPress={handleValidateTicket}
-        disabled={!passengerDetails || scanStatus === 'scanning'}
-      >
-        <Ionicons name="checkmark" size={20} color="white" />
-        <Text style={styles.validateButtonText}>Validate Ticket</Text>
-      </TouchableOpacity>
-      
-      {/* Scan History Button */}
-      <TouchableOpacity 
-        style={styles.historyButton} 
-        onPress={handleViewScanHistory}
-      >
-        <Ionicons name="time" size={20} color="#555" />
-        <Text style={styles.historyButtonText}>Scan History</Text>
-      </TouchableOpacity>
-      
-      {/* Recent Scans */}
-      <View style={styles.recentScansContainer}>
-        <Text style={styles.recentScansTitle}>Recent Scans</Text>
-        
-        {recentScans.slice(0, 2).map((scan) => (
-          <View key={scan.id} style={styles.scanItem}>
-            <View style={styles.scanItemLeft}>
-              <View style={scan.status === 'success' ? styles.successIcon : styles.failedIcon}>
-                {scan.status === 'success' ? (
-                  <Ionicons name="checkmark" size={16} color="#22C55E" />
-                ) : (
-                  <Ionicons name="close" size={16} color="#FF3B30" />
-                )}
+        {/* Recent Scans */}
+        <View style={styles.recentScansContainer}>
+          <Text style={styles.recentScansTitle}>Recent Scans</Text>
+          
+          {recentScans.slice(0, 2).map((scan) => (
+            <View key={scan.id} style={styles.scanItem}>
+              <View style={styles.scanItemLeft}>
+                <View style={scan.status === 'success' ? styles.successIcon : styles.failedIcon}>
+                  {scan.status === 'success' ? (
+                    <Ionicons name="checkmark" size={16} color="#22C55E" />
+                  ) : (
+                    <Ionicons name="close" size={16} color="#FF3B30" />
+                  )}
+                </View>
+                
+                <View>
+                  <Text style={styles.scanItemName}>
+                    {scan.name || 'Invalid QR'}
+                  </Text>
+                  {scan.seatNumber && (
+                    <Text style={styles.scanItemDetails}>
+                      Seat {scan.seatNumber} • {getTimeAgo(scan.timestamp)}
+                    </Text>
+                  )}
+                  {!scan.seatNumber && (
+                    <Text style={styles.scanItemDetails}>
+                      {getTimeAgo(scan.timestamp)}
+                    </Text>
+                  )}
+                </View>
               </View>
               
-              <View>
-                <Text style={styles.scanItemName}>
-                  {scan.name || 'Invalid QR'}
+              <View style={scan.status === 'success' ? styles.successBadge : styles.failedBadge}>
+                <Text style={scan.status === 'success' ? styles.successText : styles.failedText}>
+                  {scan.status === 'success' ? 'Success' : 'Failed'}
                 </Text>
-                {scan.seatNumber && (
-                  <Text style={styles.scanItemDetails}>
-                    Seat {scan.seatNumber} • {getTimeAgo(scan.timestamp)}
-                  </Text>
-                )}
-                {!scan.seatNumber && (
-                  <Text style={styles.scanItemDetails}>
-                    {getTimeAgo(scan.timestamp)}
-                  </Text>
-                )}
               </View>
             </View>
-            
-            <View style={scan.status === 'success' ? styles.successBadge : styles.failedBadge}>
-              <Text style={scan.status === 'success' ? styles.successText : styles.failedText}>
-                {scan.status === 'success' ? 'Success' : 'Failed'}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const { width } = Dimensions.get('window');
-const SCAN_FRAME_SIZE = width * 0.8;
+const SCAN_FRAME_SIZE = width * 0.7;
 
 const styles = StyleSheet.create({
-  // Styles unchanged - keeping same styling
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -415,6 +419,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  permissionText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -425,27 +435,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
-  backButton: {
-    padding: 4,
+  headerBackButton: {
+    padding: 8,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
   },
   menuButton: {
-    padding: 4,
+    padding: 8,
+    width: 40, // Fixed width to maintain layout balance
   },
   cameraContainer: {
     width: '100%',
-    height: width * 0.8,
-    backgroundColor: 'black',
+    height: width * 0.9,
     overflow: 'hidden',
   },
   camera: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1,
   },
   scanOverlay: {
     position: 'absolute',
@@ -455,7 +462,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   scanFrame: {
     width: SCAN_FRAME_SIZE,
@@ -466,16 +473,49 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     position: 'relative',
   },
+  cornerTL: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    width: 20,
+    height: 20,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: 'white',
+    borderTopLeftRadius: 16,
+  },
   cornerTR: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: -2,
+    right: -2,
     width: 20,
     height: 20,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderColor: 'black',
-    backgroundColor: 'transparent',
+    borderColor: 'white',
+    borderTopRightRadius: 16,
+  },
+  cornerBL: {
+    position: 'absolute',
+    bottom: -2,
+    left: -2,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: 'white',
+    borderBottomLeftRadius: 16,
+  },
+  cornerBR: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderColor: 'white',
+    borderBottomRightRadius: 16,
   },
   cameraContentOverlay: {
     position: 'absolute',
@@ -502,15 +542,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     borderRadius: 8,
     overflow: 'hidden',
+    marginBottom: 8,
   },
   subInstructionText: {
     color: 'white',
     fontSize: 14,
     opacity: 0.8,
-    marginTop: 4,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -551,9 +591,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#555',
   },
+  detailsScrollView: {
+    flex: 1,
+  },
   detailsContainer: {
     marginHorizontal: 16,
-    marginVertical: 12,
+    marginTop: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     shadowColor: '#000',
@@ -600,13 +643,14 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   validateButton: {
-    backgroundColor: '#6495ED',
+    backgroundColor: '#0066FF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
     paddingVertical: 14,
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 12,
   },
   disabledButton: {
@@ -636,6 +680,7 @@ const styles = StyleSheet.create({
   },
   recentScansContainer: {
     marginHorizontal: 16,
+    marginBottom: 24,
   },
   recentScansTitle: {
     fontSize: 16,
@@ -715,10 +760,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 20,
+    alignItems: 'center',
+    width: '80%',
+  },
+  backButton: {
+    backgroundColor: '#6c757d',
+    marginTop: 10,
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
+  }
 });

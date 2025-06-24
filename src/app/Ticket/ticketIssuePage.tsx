@@ -62,7 +62,7 @@ export default function TicketConfirmationScreen() {
 
   // Handle view history
   const handleViewHistory = () => {
-    router.push('/scanHistory');
+    router.push('/Ticket/scanHistory');
   };
 
   return (

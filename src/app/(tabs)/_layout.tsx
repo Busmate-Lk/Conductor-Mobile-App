@@ -21,6 +21,11 @@ export default function TabLayout() {
         
         
         tabBarBackground: TabBarBackground,
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? 'light'].tabBarBackground,
+          borderTopWidth: Platform.OS === 'ios' ? 0 : 1,
+          borderTopColor: Colors[colorScheme ?? 'light'].tabBarBorder,
+        },
       }}>
       {/* Your tab screens remain the same */}
       <Tabs.Screen

@@ -25,13 +25,7 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
       
       {/* Header */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <View style={styles.emptySpace} />
-      </View> */}
+      
       
       <ScrollView style={styles.container}>
         <View style={styles.profileCard}>

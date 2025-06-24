@@ -2,26 +2,69 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-
-// Type definition for Schedule
-export type Schedule = {
-  id: string;
-  from: string;
-  to: string;
-  busNumber: string;
-  startTime: string;
-  endTime: string;
-  date: string;
-  seatsOccupied: number;
-  totalSeats: number;
-  status: 'ongoing' | 'upcoming' | 'completed';
-};
+import { Schedule } from '@/types/schedule';
 
 type Props = {
   item: Schedule;
 };
 
+// Helper function to format date display - turns MM/DD/YYYY into a readable format
+const formatDate = (dateStr: string): string => {
+  try {
+    // Trim any leading/trailing spaces
+    dateStr = dateStr.trim();
+    
+    // Split by /
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) {
+      console.error(`Invalid date format in ScheduleCard: "${dateStr}"`);
+      return dateStr; // Return the original string if format is incorrect
+    }
+    
+    const month = parseInt(parts[0], 10);
+    const day = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    
+    if (isNaN(month) || isNaN(day) || isNaN(year)) {
+      console.error(`Invalid date components: month=${parts[0]}, day=${parts[1]}, year=${parts[2]}`);
+      return dateStr;
+    }
+    
+    // Create date
+    const date = new Date(year, month - 1, day);
+    
+    // Format the date nicely for display
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    return `${weekdays[date.getDay()]}, ${monthNames[date.getMonth()]} ${day}, ${year}`;
+  } catch (error) {
+    console.error(`Error formatting date "${dateStr}":`, error);
+    return dateStr; // Return the original if any error
+  }
+};
+
 export default function ScheduleCard({ item }: Props) {
+  // Get status display text
+  const getStatusText = (status: Schedule['status']): string => {
+    switch (status) {
+      case 'ongoing': return 'Ongoing';
+      case 'upcoming': return 'Upcoming';
+      case 'completed': return 'Completed';
+      default: return status;
+    }
+  };
+
+  // Get color for status badge
+  const getStatusColor = (status: Schedule['status']): string => {
+    switch (status) {
+      case 'ongoing': return '#22C55E';
+      case 'upcoming': return '#0066FF';
+      case 'completed': return '#999';
+      default: return '#999';
+    }
+  };
+
   return (
     <View style={styles.scheduleCard}>
       {/* Route and Status */}
@@ -29,12 +72,10 @@ export default function ScheduleCard({ item }: Props) {
         <Text style={styles.routeText}>{item.from} – {item.to}</Text>
         <View style={[
           styles.statusBadge, 
-          item.status === 'ongoing' ? styles.ongoingBadge : 
-          item.status === 'upcoming' ? styles.upcomingBadge : styles.completedBadge
+          { backgroundColor: getStatusColor(item.status) }
         ]}>
           <Text style={styles.statusText}>
-            {item.status === 'ongoing' ? 'Ongoing' : 
-             item.status === 'upcoming' ? 'Upcoming' : 'Completed'}
+            {getStatusText(item.status)}
           </Text>
         </View>
       </View>
@@ -44,19 +85,19 @@ export default function ScheduleCard({ item }: Props) {
         <MaterialCommunityIcons name="bus" size={18} color="#0066FF" />
         <Text style={styles.infoText}>Bus #{item.busNumber}</Text>
       </View>
-
+      
       {/* Time */}
       <View style={styles.infoRow}>
         <Ionicons name="time-outline" size={18} color="#777" />
         <Text style={styles.infoText}>{item.startTime} – {item.endTime}</Text>
       </View>
-
-      {/* Date */}
+      
+      {/* Date - using our formatter */}
       <View style={styles.infoRow}>
         <Ionicons name="calendar-outline" size={18} color="#777" />
-        <Text style={styles.infoText}>{item.date}</Text>
+        <Text style={styles.infoText}>{formatDate(item.date)}</Text>
       </View>
-
+      
       {/* Seats */}
       <View style={styles.infoRow}>
         <Ionicons name="people-outline" size={18} color="#777" />
@@ -69,10 +110,16 @@ export default function ScheduleCard({ item }: Props) {
       <View style={styles.actionButtonsContainer}>
         {item.status === 'ongoing' && (
           <>
-            <TouchableOpacity style={styles.primaryButton}>
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={() => router.push('/Journey/seatView')}
+            >
               <Text style={styles.primaryButtonText}>View Seats</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton}>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
+            >
               <Text style={styles.secondaryButtonText}>Trip Details</Text>
             </TouchableOpacity>
           </>
@@ -80,10 +127,16 @@ export default function ScheduleCard({ item }: Props) {
 
         {item.status === 'upcoming' && (
           <>
-            <TouchableOpacity style={styles.primaryButton}>
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
+            >
               <Text style={styles.primaryButtonText}>Start Trip</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton}>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => router.push(`/Journey/trip_details?id=${item.id}`)}
+            >
               <Text style={styles.secondaryButtonText}>View Details</Text>
             </TouchableOpacity>
           </>
@@ -93,13 +146,13 @@ export default function ScheduleCard({ item }: Props) {
           <>
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => { router.push('/Journey/journeyReport'); }}
+              onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
             >
               <Text style={styles.secondaryButtonText}>View Report</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => { router.push('/Journey/tripOverview'); }}
+              onPress={() => router.push(`/Journey/tripOverview?id=${item.id}`)}
             >
               <Text style={styles.secondaryButtonText}>Trip Summary</Text>
             </TouchableOpacity>
@@ -132,15 +185,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 12,
     borderRadius: 20,
-  },
-  ongoingBadge: {
-    backgroundColor: '#22C55E',
-  },
-  upcomingBadge: {
-    backgroundColor: '#0066FF',
-  },
-  completedBadge: {
-    backgroundColor: '#999',
   },
   statusText: {
     color: '#FFFFFF',

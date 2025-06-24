@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1",
+    "from": "Kandy",
+    "to": "Colombo",
+    "busNumber": "KD-4578",
+    "startTime": "06:30 AM",
+    "endTime": "09:45 AM",
+    "date": "06/23/2025",
+    "seatsOccupied": 48,
+    "totalSeats": 55,
+    "status": "completed"
+  },
+  {
+    "id": "2",
+    "from": "Colombo",
+    "to": "Galle",
+    "busNumber": "CG-2341",
+    "startTime": "02:15 PM",
+    "endTime": "04:30 PM",
+    "date": "06/23/2025",
+    "seatsOccupied": 32,
+    "totalSeats": 50,
+    "status": "completed"
+  },
+  {
+    "id": "3",
+    "from": "Negombo",
+    "to": "Kandy",
+    "busNumber": "NK-7892",
+    "startTime": "10:00 AM",
+    "endTime": "01:15 PM",
+    "date": "06/22/2025",
+    "seatsOccupied": 45,
+    "totalSeats": 45,
+    "status": "completed"
+  },
+  {
+    "id": "4",
+    "from": "Galle",
+    "to": "Matara",
+    "busNumber": "GM-1234",
+    "startTime": "09:00 AM",
+    "endTime": "10:30 AM",
+    "date": "06/24/2025",
+    "seatsOccupied": 15,
+    "totalSeats": 50,
+    "status": "ongoing"
+  },
+  {
+    "id": "5",
+    "from": "Colombo",
+    "to": "Jaffna",
+    "busNumber": "CJ-9876",
+    "startTime": "08:00 AM",
+    "endTime": "02:30 PM",
+    "date": "06/25/2025",
+    "seatsOccupied": 28,
+    "totalSeats": 55,
+    "status": "upcoming"
+  },
+  {
+    "id": "6",
+    "from": "Kandy",
+    "to": "Batticaloa",
+    "busNumber": "KB-5432",
+    "startTime": "07:45 AM",
+    "endTime": "12:15 PM",
+    "date": "06/21/2025",
+    "seatsOccupied": 42,
+    "totalSeats": 45,
+    "status": "completed"
+  }
+]

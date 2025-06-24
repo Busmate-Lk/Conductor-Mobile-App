@@ -31,6 +31,9 @@ export default function RootLayout() {
         <Stack.Screen name="Notification" options={{ headerShown: false }} />
         <Stack.Screen name="Ticket" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="Passenger_Notifications" options={{ headerShown: false }} />
+        
+        {/* Add any additional screens here */}
         
         <Stack.Screen name="+not-found" />
       </Stack>

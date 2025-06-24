@@ -20,9 +20,18 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        
+        {/* Hide the folder-level headers for sections */}
+        <Stack.Screen name="Journey" options={{ headerShown: false }} />
+        <Stack.Screen name="Authentication" options={{ headerShown: false }} />
+        <Stack.Screen name="Insights" options={{ headerShown: false }} />
+        <Stack.Screen name="Notification" options={{ headerShown: false }} />
+        <Stack.Screen name="Ticket" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

@@ -53,23 +53,23 @@ export default function TripReportScreen() {
   };
 
   const handleExportPDF = () => {
-    console.log('Exporting PDF...');
+    
   };
 
   const handleDownloadCSV = () => {
-    console.log('Downloading CSV...');
+    
   };
 
   const handleEmailReport = () => {
-    console.log('Emailing report...');
+    
   };
 
   const handleShareReport = () => {
-    console.log('Sharing report...');
+    
   };
 
   const handleViewAllLogs = () => {
-    console.log('Viewing all logs...');
+    
   };
 
   return (

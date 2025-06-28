@@ -31,7 +31,6 @@ export default function TicketsScreen() {
 
   const issueTicket = () => {
     // Implement ticket issuing functionality
-    console.log('Issuing ticket for', passengerCount, 'passengers from', fromLocation, 'to', toLocation);
   };
 
   return (

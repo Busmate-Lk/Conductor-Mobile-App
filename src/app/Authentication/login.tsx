@@ -1,5 +1,5 @@
 import FingerprintModal from '@/components/Login/FingerprintModel';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,154 +7,158 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   SafeAreaView,
-  Animated,
   Dimensions,
-  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
-const { height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
-  
 
   const handleSignIn = () => {
-    // Implement your authentication logic here
-    if (username && password) {
-      router.replace('/(tabs)');
+    if (email && password) {
+      router.push('/(tabs)/home');
     }
   };
 
-  // Handle fingerprint authentication
   const handleFingerprintAuth = () => {
     setShowFingerprint(true);
   };
 
-  // Handle cancel fingerprint
   const handleCancelFingerprint = () => {
     setShowFingerprint(false);
   };
 
-  // Simulate fingerprint authentication success
-  const simulateAuthentication = () => {
-    // Simulate scanning delay
-    setTimeout(() => {
-      setShowFingerprint(false);
-      router.replace('/(tabs)');
-    }, 1500);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.card}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Ionicons name="bus-outline" size={20} color="white" />
-          <Text style={styles.headerText}>Busmate LK</Text>
-        </View>
-
-        {/* Main Content */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
         <View style={styles.content}>
-          {/* User Avatar */}
-          <View style={styles.avatarContainer}>
-            <Ionicons name="person" size={40} color="#D3D3D3" />
-          </View>
-          
-          <Text style={styles.welcomeText}>Welcome Back</Text>
-          
-          {/* Username field */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Username</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your username"
-                value={username}
-                onChangeText={setUsername}
-              />
-              <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+          {/* Logo and App Name */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="bus" size={40} color="white" />
             </View>
+            <Text style={styles.appName}>Busmate LK</Text>
+            <Text style={styles.tagline}>Manage your bus. Empower your journey.</Text>
           </View>
-          
-          {/* Password field */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
-            </View>
-          </View>
-          
-          {/* Remember me and forgot password */}
-          <View style={styles.optionsRow}>
-            <TouchableOpacity 
-              style={styles.rememberContainer} 
-              onPress={() => setRememberMe(!rememberMe)}
-            >
-              <View style={styles.checkbox}>
-                {rememberMe && <Ionicons name="checkmark" size={16} color="#0066FF" />}
+
+          {/* Login Form */}
+          <View style={styles.formContainer}>
+            {/* Email Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#A0A0A0" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#A0A0A0"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
               </View>
-              <Text style={styles.rememberText}>Remember Me</Text>
-            </TouchableOpacity>
+            </View>
+
+            {/* Password Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#A0A0A0" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#A0A0A0"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons 
+                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                    size={20} 
+                    color="#A0A0A0" 
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Remember me and Forgot Password */}
+            <View style={styles.optionsRow}>
+              <TouchableOpacity 
+                style={styles.rememberContainer} 
+                onPress={() => setRememberMe(!rememberMe)}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Ionicons name="checkmark" size={12} color="white" />}
+                </View>
+                <Text style={styles.rememberText}>Remember me</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
             
-            <TouchableOpacity>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+            {/* Login Button */}
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={handleSignIn}
+            >
+              <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
           </View>
-          
-          {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} 
-           onPress={() => { router.push('/(tabs)/home'); }}
-          >
-            <Ionicons name="lock-closed-outline" size={16} color="white" style={{marginRight: 8}} />
-            <Text style={styles.signInText}>Sign In</Text>
-          </TouchableOpacity>
-          
+
           {/* OR Separator */}
           <View style={styles.orContainer}>
             <View style={styles.orLine} />
             <Text style={styles.orText}>OR</Text>
             <View style={styles.orLine} />
           </View>
-          
-          {/* Fingerprint Button */}
+
+          {/* Fingerprint Login */}
           <TouchableOpacity 
-            style={styles.fingerprintContainer} 
+            style={styles.fingerprintButton}
             onPress={handleFingerprintAuth}
           >
-            <Ionicons name="finger-print" size={60} color="#0066FF" />
+            <Image
+              source={require("@/assets/images/fingerprint.svg")}
+              style={styles.fingerprintImage}
+              contentFit="contain"
+            />
+            <Text style={styles.fingerprintText}>Login with Fingerprint</Text>
           </TouchableOpacity>
-        </View>
-        
-        {/* Footer */}
-        <View style={styles.footer}>
-                    <Text style={styles.copyright}>© {new Date().getFullYear()} Busmate LK. All rights reserved.</Text>
-          
 
+          {/* Help Text */}
+          <Text style={styles.helpText}>
+            Need help? Contact your Bus Operator.
+          </Text>
         </View>
-      </View>
+      </KeyboardAvoidingView>
+
+      {/* Fingerprint Modal */}
       <FingerprintModal
-  visible={showFingerprint}
-  onCancel={handleCancelFingerprint}
-  onAuthenticate={() => {
-    // You can call simulateAuthentication() or your real auth logic here
-    setShowFingerprint(false);
-    router.replace('/(tabs)/home');
-  }}
-/>
-     
+        visible={showFingerprint}
+        onCancel={handleCancelFingerprint}
+        onAuthenticate={() => {
+          setShowFingerprint(false);
+          router.push('/(tabs)/home');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -162,86 +166,89 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    
+    backgroundColor: '#F4F6F9',
   },
-  card: {
-    backgroundColor: 'white',
-    // borderRadius: 10,
-    width: '100%',
-    // maxWidth: 400,
-    overflow: 'hidden',
-    // elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  header: {
-    
-    backgroundColor: '#0066FF',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
+  keyboardAvoid: {
+    flex: 1,
   },
   content: {
-    padding: 24,
+    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  avatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#f0f0f0',
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 40,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#0066FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  welcomeText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 24,
+  appName: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0066FF',
+    marginBottom: 8,
   },
-  inputContainer: {
+  tagline: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+  },
+  formContainer: {
     width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 2,
+  },
+  inputGroup: {
     marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
+    backgroundColor: '#FFFFFF',
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    height: 40,
-    paddingVertical: 8,
-    fontSize: 14,
+    fontSize: 16,
+    color: '#333',
+    height: '100%',
   },
-  inputIcon: {
-    marginHorizontal: 8,
+  eyeIcon: {
+    padding: 8,
   },
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
     marginVertical: 16,
   },
   rememberContainer: {
@@ -252,69 +259,71 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderWidth: 1,
-    borderColor: '#CCC',
-    borderRadius: 2,
+    borderColor: '#DDD',
+    borderRadius: 4,
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  checkboxChecked: {
+    backgroundColor: '#0066FF',
+    borderColor: '#0066FF',
+  },
   rememberText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
   },
   forgotText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#0066FF',
   },
-  signInButton: {
+  loginButton: {
     backgroundColor: '#0066FF',
-    borderRadius: 8,
-    width: '100%',
-    padding: 12,
+    borderRadius: 50,
+    height: 52,
     alignItems: 'center',
-    marginVertical: 16,
-    flexDirection: 'row',
     justifyContent: 'center',
+    marginTop: 8,
   },
-  signInText: {
+  loginButtonText: {
     color: 'white',
-    fontWeight: '600',
     fontSize: 16,
+    fontWeight: '600',
   },
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginVertical: 16,
+    marginVertical: 24,
   },
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#E5E7EB',
   },
   orText: {
     marginHorizontal: 16,
-    color: '#999',
-    fontSize: 14,
+    color: '#666',
+    fontSize: 16,
   },
-  fingerprintContainer: {
-    marginTop: 8,
-    marginBottom: 36,
-  },
-  footer: {
-    padding: 16,
+  fingerprintButton: {
     alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 20,
-    color: '#999',
     marginBottom: 30,
   },
-  copyright: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    position: 'absolute',
-    bottom: 40,
-    textAlign: 'center',
+  fingerprintImage: {
+    width: 64,
+    height: 64,
+    marginBottom: 10,
+  },
+  fingerprintText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  helpText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 'auto',
   }
 });

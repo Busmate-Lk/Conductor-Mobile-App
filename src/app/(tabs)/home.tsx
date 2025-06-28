@@ -148,7 +148,7 @@ export default function HomeScreen() {
     style={styles.shiftButton}
     onPress={() => {
       // Handle shift start
-      console.log("Starting shift");
+     
       // You could navigate to shift details or start a timer
       // router.push('/active-shift');
     }}

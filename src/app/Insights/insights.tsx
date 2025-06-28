@@ -58,9 +58,9 @@ export default function InsightsScreen() {
 
   // Mock data
   const insightsData: Record<TimeFilter, InsightsData> = {
-    today: {
+    today: { 
       totalPassengers: {
-        value: 247,
+        value: 244,
         trend: '+12% from yesterday',
         trending: 'up'
       },

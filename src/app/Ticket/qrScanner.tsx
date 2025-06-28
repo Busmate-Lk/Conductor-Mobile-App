@@ -18,7 +18,11 @@ import { router } from 'expo-router';
 interface ScanHistoryItem {
   id: string;
   name?: string;
+  start?: string;
+  end?: string;
   seatNumber?: string;
+  passengerCount?: number;
+  ticketFee?: number; // can be float or integer
   status: 'success' | 'failed';
   timestamp: Date;
   ticketId?: string;
@@ -27,7 +31,11 @@ interface ScanHistoryItem {
 // Interface for passenger details
 interface PassengerDetails {
   name: string;
+  start: string;
+  end: string;
   seatNumber: string;
+  passengerCount?: number;
+  ticketFee?: number; // can be float or integer
   paymentStatus: string;
   ticketId: string;
 }
@@ -49,7 +57,11 @@ export default function QRScannerScreen() {
     {
       id: '1',
       name: 'John Smith',
+      start: 'Colombo Fort',
+      end: 'Kandy',
       seatNumber: '12A',
+      passengerCount: 1,
+      ticketFee: 100.00,
       status: 'success',
       timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 mins ago
       ticketId: 'TK20250612-001'
@@ -85,6 +97,10 @@ export default function QRScannerScreen() {
           const ticketData = JSON.parse(data.replace('TICKET:', ''));
           setPassengerDetails({
             name: ticketData.name || 'Unknown',
+            start: ticketData.start || 'Unknown',
+            end: ticketData.end || 'Unknown',
+            passengerCount: ticketData.passengerCount || 1,
+            ticketFee: ticketData.ticketFee || 0,
             seatNumber: ticketData.seat || 'Not assigned',
             paymentStatus: ticketData.paid ? 'Paid' : 'Unpaid',
             ticketId: ticketData.id || 'Unknown'
@@ -310,18 +326,47 @@ export default function QRScannerScreen() {
               </Text>
             </View>
           </View>
-          
+           <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Ticket ID</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.ticketId || '–'}
+            </Text>
+          </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Name</Text>
             <Text style={styles.detailValue}>
               {passengerDetails?.name || '–'}
             </Text>
           </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Start Station</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.start || '–'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>End Station</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.end || '–'}
+            </Text>
+          </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Seat Number</Text>
+            <Text style={styles.detailLabel}>Seat Number(s)</Text>
             <Text style={styles.detailValue}>
               {passengerDetails?.seatNumber || '–'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>No. of Passengers</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.passengerCount || '–'}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Total Ticket fee</Text>
+            <Text style={styles.detailValue}>
+              {passengerDetails?.ticketFee|| '–'}
             </Text>
           </View>
           
@@ -332,12 +377,7 @@ export default function QRScannerScreen() {
             </Text>
           </View>
           
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Ticket ID</Text>
-            <Text style={styles.detailValue}>
-              {passengerDetails?.ticketId || '–'}
-            </Text>
-          </View>
+         
         </View>
         
         {/* Validate Button */}
@@ -448,7 +488,7 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     width: '100%',
-    height: width * 0.9,
+    height: width * 0.8,
     overflow: 'hidden',
   },
   camera: {

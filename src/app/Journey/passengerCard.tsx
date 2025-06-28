@@ -396,6 +396,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#EEEEEE',
+    marginBottom: 35,
   },
   revalidateButton: {
     flex: 1,

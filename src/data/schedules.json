@@ -40,9 +40,9 @@
     "from": "Galle",
     "to": "Matara",
     "busNumber": "GM-1234",
-    "startTime": "09:00 AM",
-    "endTime": "10:30 AM",
-    "date": "06/24/2025",
+    "startTime": "09:00 PM",
+    "endTime": "10:30 PM",
+    "date": "06/30/2025",
     "seatsOccupied": 15,
     "totalSeats": 50,
     "status": "ongoing"
@@ -54,7 +54,7 @@
     "busNumber": "CJ-9876",
     "startTime": "08:00 AM",
     "endTime": "02:30 PM",
-    "date": "06/25/2025",
+    "date": "06/30/2025",
     "seatsOccupied": 28,
     "totalSeats": 55,
     "status": "upcoming"

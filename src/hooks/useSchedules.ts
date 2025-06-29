@@ -125,7 +125,6 @@ export function useSchedules(initialFilter: TimeFilter = 'today') {
     const isToday = (dateStr: string): boolean => {
       // Simple string comparison - much more reliable!
       const result = dateStr.trim() === todayFormatted;
-      console.log(`Is "${dateStr}" today (${todayFormatted})? ${result}`);
       return result;
     };
     
@@ -138,51 +137,21 @@ export function useSchedules(initialFilter: TimeFilter = 'today') {
             const isDateToday = isToday(schedule.date);
             const notCompleted = schedule.status !== 'completed';
             const result = isDateToday && notCompleted;
-            
-            if (isDateToday) {
-              console.log(`Schedule ${schedule.id} is today, status: ${schedule.status}, included: ${result}`);
-            }
-            
+
             return result;
           } catch (error) {
-            console.error(`Error filtering today schedule ${schedule.id}:`, error);
+            
             return false;
           }
         });
         
-        console.log(`Found ${todaySchedules.length} schedules for today tab`);
+       
         setFilteredSchedules(todaySchedules);
         break;
         
       case 'upcoming':
-        // Future schedules or today's schedules with future start time
-        const upcomingSchedules = schedules.filter(schedule => {
-          try {
-            const scheduleDate = parseDate(schedule.date);
-            
-            // Future date (not today)
-            if (scheduleDate > todayStart && !isToday(schedule.date)) {
-              console.log(`Schedule ${schedule.id} is in the future (${schedule.date})`);
-              return true;
-            }
-            
-            // Today but start time is in the future
-            if (isToday(schedule.date)) {
-              const startDateTime = parseDateTime(scheduleDate, schedule.startTime);
-              const isFutureTime = startDateTime > sriLankaTime;
-              
-              console.log(`Schedule ${schedule.id} is today, start: ${schedule.startTime}, isFuture: ${isFutureTime}`);
-              return isFutureTime;
-            }
-            
-            return false;
-          } catch (error) {
-            console.error(`Error filtering upcoming schedule ${schedule.id}:`, error);
-            return false;
-          }
-        });
-        
-        console.log(`Found ${upcomingSchedules.length} schedules for upcoming tab`);
+        // Show schedules with status 'upcoming'
+        const upcomingSchedules = schedules.filter(schedule => schedule.status === 'upcoming');
         setFilteredSchedules(upcomingSchedules);
         break;
         

@@ -1,5 +1,5 @@
-import schedules from '../data/schedules.json';
-import { Schedule } from '../types/schedule';
+import schedules from '../../data/Journey/schedules.json';
+import { Schedule } from '../../types/Journey/schedule';
 
 // Mock API service - only fetches data, doesn't filter
 export const api = {

@@ -31,20 +31,20 @@ export default function TicketLayout() {
         headerLeft: () => <BackButton />,
       }}
     >
-      <Stack.Screen 
+      {/* <Stack.Screen 
         name="index" 
         options={{
           title: "Tickets",
         }}
-      />
+      /> */}
       
-      <Stack.Screen 
+      {/* <Stack.Screen 
         name="ticketDetails" 
         options={{
           title: "Ticket Details",
           presentation: 'card',
         }}
-      />
+      /> */}
       
       <Stack.Screen 
         name="qrScanner" 
@@ -64,17 +64,17 @@ export default function TicketLayout() {
       />
       
       <Stack.Screen 
-        name="validateTicket" 
+        name="ticketPrintingpage" 
         options={{
-          title: "Validate Ticket",
-          presentation: 'card',
+          title: "Printing Ticket",
+          // presentation: 'card',
         }}
       />
       
       <Stack.Screen 
-        name="issueTicket" 
+        name="ticketIssuePage" 
         options={{
-          title: "Issue New Ticket",
+          title: "TIcket Details",
           presentation: 'modal',
         }}
       />

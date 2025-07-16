@@ -1,19 +1,22 @@
 import FingerprintModal from '@/components/Login/FingerprintModel';
+import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  SafeAreaView,
+import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -23,15 +26,77 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = () => {
-    if (email && password) {
-      router.push('/(tabs)/home');
+  const { login, saveUserData, isBiometricSupported, hasBiometricCredentials } = useAuth();
+
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    if (!email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Access Denied', 'Invalid credentials or not a Conductor.', [{ text: 'OK' }]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleFingerprintAuth = () => {
-    setShowFingerprint(true);
+    if (!isBiometricSupported) {
+      Alert.alert(
+        'Biometric Not Available',
+        'Biometric authentication is not supported or enabled on this device.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    if (!hasBiometricCredentials) {
+      Alert.alert(
+        'No Biometric Credentials',
+        'Please set up fingerprint authentication in your device settings first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setShowFingerprint(true); // This will open your modal
+  };
+
+  const handleFingerprintSuccess = async () => {
+    setShowFingerprint(false);
+    setIsLoading(true);
+    try {
+      // Try to restore user/token from AsyncStorage (if previously logged in)
+      const userDataStr = await AsyncStorage.getItem('user');
+      const token = await AsyncStorage.getItem('authToken');
+      if (userDataStr && token) {
+        const userData = JSON.parse(userDataStr);
+        if (userData.role === 'conductor') {
+          await saveUserData(userData, token);
+          router.replace('/(tabs)');
+          return;
+        }
+      }
+      Alert.alert('Biometric Login Failed', 'No valid conductor session found. Please login with email and password first.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to restore authentication data');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancelFingerprint = () => {
@@ -51,9 +116,13 @@ export default function LoginScreen() {
               <Ionicons name="bus" size={40} color="white" />
             </View>
             <Text style={styles.appName}>Busmate LK</Text>
-            <Text style={styles.tagline}>Manage your bus. Empower your journey.</Text>
+            <Text style={styles.tagline}>Conductor Mobile App</Text>
+            <View style={styles.roleIndicator}>
+              <Ionicons name="person-circle" size={16} color="#0066FF" />
+              <Text style={styles.roleText}>Conductor Access Only</Text>
+            </View>
           </View>
-
+             
           {/* Login Form */}
           <View style={styles.formContainer}>
             {/* Email Field */}
@@ -63,12 +132,13 @@ export default function LoginScreen() {
                 <Ionicons name="mail-outline" size={20} color="#A0A0A0" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
+                  placeholder="Enter your conductor email"
                   placeholderTextColor="#A0A0A0"
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  editable={!isLoading}
                 />
               </View>
             </View>
@@ -86,6 +156,7 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   autoCapitalize="none"
+                  editable={!isLoading}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                   <Ionicons 
@@ -102,6 +173,7 @@ export default function LoginScreen() {
               <TouchableOpacity 
                 style={styles.rememberContainer} 
                 onPress={() => setRememberMe(!rememberMe)}
+                disabled={isLoading}
               >
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
                   {rememberMe && <Ionicons name="checkmark" size={12} color="white" />}
@@ -109,39 +181,58 @@ export default function LoginScreen() {
                 <Text style={styles.rememberText}>Remember me</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert('Forgot Password', 'Contact your system administrator to reset your password.');
+                }}
+              >
                 <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
             
             {/* Login Button */}
             <TouchableOpacity 
-              style={styles.loginButton}
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleSignIn}
+              disabled={isLoading}
             >
-              <Text style={styles.loginButtonText}>Login</Text>
+              {isLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.loginButtonText}>Login as Conductor</Text>
+              )}
             </TouchableOpacity>
           </View>
 
-          {/* OR Separator */}
-          <View style={styles.orContainer}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.orLine} />
-          </View>
+          {/* OR Separator - Only show if biometric is supported */}
+          {isBiometricSupported && (
+            <View style={styles.orContainer}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>OR</Text>
+              <View style={styles.orLine} />
+            </View>
+          )}
 
-          {/* Fingerprint Login */}
-          <TouchableOpacity 
-            style={styles.fingerprintButton}
-            onPress={handleFingerprintAuth}
-          >
-            <Image
-              source={require("@/assets/images/fingerprint.svg")}
-              style={styles.fingerprintImage}
-              contentFit="contain"
-            />
-            <Text style={styles.fingerprintText}>Login with Fingerprint</Text>
-          </TouchableOpacity>
+          {/* Fingerprint Login - Only show if supported */}
+          {isBiometricSupported && (
+            <TouchableOpacity 
+              style={styles.fingerprintButton}
+              onPress={handleFingerprintAuth}
+              disabled={isLoading}
+            >
+              <View style={styles.fingerprintIconContainer}>
+                <Ionicons name="finger-print" size={40} color="#0066FF" />
+              </View>
+              <Text style={styles.fingerprintText}>
+                {hasBiometricCredentials ? 'Login with Biometric' : 'Setup Required'}
+              </Text>
+              {!hasBiometricCredentials && (
+                <Text style={styles.fingerprintSubtext}>
+                  Enable biometric authentication in device settings
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Help Text */}
           <Text style={styles.helpText}>
@@ -154,10 +245,7 @@ export default function LoginScreen() {
       <FingerprintModal
         visible={showFingerprint}
         onCancel={handleCancelFingerprint}
-        onAuthenticate={() => {
-          setShowFingerprint(false);
-          router.push('/(tabs)/home');
-        }}
+        onAuthenticate={handleFingerprintSuccess}
       />
     </SafeAreaView>
   );
@@ -201,7 +289,22 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  roleIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F0FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  roleText: {
+    fontSize: 14,
+    color: '#0066FF',
+    fontWeight: '500',
+    marginLeft: 4,
   },
   formContainer: {
     width: '100%',
@@ -286,6 +389,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
   },
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
   loginButtonText: {
     color: 'white',
     fontSize: 16,
@@ -311,15 +417,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
-  fingerprintImage: {
-    width: 64,
-    height: 64,
-    marginBottom: 10,
+  fingerprintIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0F6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#E6F0FF',
   },
   fingerprintText: {
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  fingerprintSubtext: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
   },
   helpText: {
     fontSize: 14,

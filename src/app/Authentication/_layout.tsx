@@ -7,8 +7,8 @@ export default function AuthenticationLayout() {
       header: () => null, // Extra certainty that header won't show
     }}>
       <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-      <Stack.Screen name="register" options={{ headerShown: false }} />
+      {/* <Stack.Screen name="forgot-password" options={{ headerShown: false }} /> */}
+      
     </Stack>
   );
 }

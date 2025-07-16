@@ -35,12 +35,16 @@ export default function TicketsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
+      <StatusBar 
+        barStyle="light-content" 
+        translucent={false}
+        backgroundColor="#0066FF" 
+      />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton}
-        onPress={() => { router.push('/(tabs)/home'); }}
+          onPress={() => { router.push('/'); }}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -132,30 +136,36 @@ export default function TicketsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0066FF', 
+    
+    // Changed to match header color
   },
   header: {
-    marginTop: StatusBar.currentHeight,
+    // REMOVED: marginTop: StatusBar.currentHeight, ← This was causing the gap
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-     backgroundColor: '#22C55E',
+    backgroundColor: '#0066FF',
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
   backButton: {
     padding: 4,
+    marginTop: 20, // Added margin to separate from title
   },
   headerTitle: {
+    marginTop: 20, // Adjusted to center vertically
     color: 'white',
     fontSize: 20,
     fontWeight: '600',
   },
   qrButton: {
     padding: 4,
+    marginTop: 20, // Added margin to separate from title
   },
   container: {
     flex: 1,
+    backgroundColor: '#1E1E1E', // Added background color for container
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -251,7 +261,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   issueButton: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#0066FF',
     borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'center',

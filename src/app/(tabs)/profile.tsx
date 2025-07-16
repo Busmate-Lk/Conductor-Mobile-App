@@ -1,31 +1,79 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  SafeAreaView, 
-  StatusBar,
-  ScrollView
-} from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React from 'react';
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function ProfileScreen() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/Authentication/login');
+            } catch (error) {
+              console.error('Logout failed:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Use auth context data with fallbacks
   const userInfo = {
-    fullName: "Kamal Perera",
-    conductorId: "CON-2024-001",
-    email: "kamal.perera@busmate.lk",
-    contactNumber: "+94 77 123 4567"
+    fullName: user?.name || "Conductor Name",
+    conductorId: user?.employeeId || "CON-2024-001",
+    email: user?.email || "conductor@busmate.lk",
+    contactNumber: user?.contactNumber || "+94 77 123 4567",
+    role: user?.role || "conductor",
+    busId: user?.busId || "NB-2845",
+    route: user?.route || "Colombo - Kandy"
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
+      <StatusBar 
+      barStyle="light-content"
+       backgroundColor="#0066FF" 
+       translucent={false}
+       />
       
       {/* Header */}
-      
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Conductor Profile</Text>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
       
       <ScrollView style={styles.container}>
         <View style={styles.profileCard}>
@@ -38,6 +86,12 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.cameraButton}>
               <Ionicons name="camera" size={20} color="white" />
             </TouchableOpacity>
+          </View>
+          
+          {/* Role Badge */}
+          <View style={styles.roleBadge}>
+            <Ionicons name="person-circle" size={16} color="#0066FF" />
+            <Text style={styles.roleBadgeText}>Bus Conductor</Text>
           </View>
           
           {/* Profile Information */}
@@ -72,45 +126,114 @@ export default function ProfileScreen() {
               <Text style={styles.fieldText}>{userInfo.contactNumber}</Text>
             </View>
           </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.fieldLabel}>Assigned Bus</Text>
+            <View style={styles.fieldContainer}>
+              <Ionicons name="bus" size={22} color="#999" style={styles.fieldIcon} />
+              <Text style={styles.fieldText}>{userInfo.busId}</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.fieldLabel}>Assigned Route</Text>
+            <View style={styles.fieldContainer}>
+              <Ionicons name="map" size={22} color="#999" style={styles.fieldIcon} />
+              <Text style={styles.fieldText}>{userInfo.route}</Text>
+            </View>
+          </View>
         </View>
         
         {/* Edit Profile Button */}
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => {
-            // Use navigation to go to the edit_profile page
-            // Assumes you are using React Navigation
-            // and that 'EditProfile' is the route name for app/profile/edit_profile
-            // If using Expo Router, use router.push('/profile/edit_profile')
-            // Example below uses Expo Router:
-            // import { useRouter } from 'expo-router' at the top of the file
-
-            // Place this hook at the top of your component:
-            // const router = useRouter();
-
-            // Then use:
             router.push('/profile/edit_profile');
           }}
         >
+          <Ionicons name="create-outline" size={20} color="white" style={styles.editButtonIcon} />
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
         
-        {/* Change Password Section */}
-        <TouchableOpacity
-          style={styles.passwordSection}
-          onPress={() => router.push('/profile/change_password')}
-        >
-          <View style={styles.passwordLeft}>
-            <View style={styles.lockIconContainer}>
-              <Ionicons name="lock-closed" size={20} color="#666" />
+        {/* Menu Options */}
+        <View style={styles.menuContainer}>
+          {/* Change Password Section */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/profile/change_password')}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="lock-closed" size={20} color="#666" />
+              </View>
+              <View>
+                <Text style={styles.menuTitle}>Change Password</Text>
+                <Text style={styles.menuSubtitle}>Update your account password</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.passwordTitle}>Change Password</Text>
-              <Text style={styles.passwordSubtitle}>Update your account password</Text>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+
+          {/* Conductor Settings */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              Alert.alert('Conductor Settings', 'Configure your conductor preferences');
+            }}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="settings" size={20} color="#666" />
+              </View>
+              <View>
+                <Text style={styles.menuTitle}>Conductor Settings</Text>
+                <Text style={styles.menuSubtitle}>App preferences and configuration</Text>
+              </View>
             </View>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#999" />
-        </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+
+          {/* Help & Support */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              Alert.alert('Help & Support', 'Contact support at conductor-support@busmate.lk');
+            }}
+          >
+            <View style={styles.menuLeft}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="help-circle" size={20} color="#666" />
+              </View>
+              <View>
+                <Text style={styles.menuTitle}>Help & Support</Text>
+                <Text style={styles.menuSubtitle}>Get help with conductor app</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+
+          {/* Sign Out */}
+          <TouchableOpacity
+            style={[styles.menuItem, styles.logoutMenuItem]}
+            onPress={handleLogout}
+          >
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconContainer, styles.logoutIconContainer]}>
+                <Ionicons name="log-out" size={20} color="#FF3B30" />
+              </View>
+              <View>
+                <Text style={[styles.menuTitle, styles.logoutTitle]}>Sign Out</Text>
+                <Text style={styles.menuSubtitle}>Sign out of conductor account</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Version Info */}
+        <Text style={styles.versionText}>Busmate LK Conductor App v1.0.0</Text>
+        
+        {/* Bottom padding */}
+        <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -118,7 +241,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    marginTop: StatusBar.currentHeight ,
+    
     flex: 1,
     backgroundColor: '#F5F7FA',
   },
@@ -132,14 +255,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    marginTop: 20, // Added margin to separate from title
   },
   headerTitle: {
     color: 'white',
     fontSize: 22,
     fontWeight: '600',
+    marginTop: 20, // Adjusted to center vertically
   },
-  emptySpace: {
-    width: 28, // Match the size of the back button for alignment
+  logoutButton: {
+    padding: 4,
+    marginTop: 20, // Added margin to separate from title
   },
   container: {
     flex: 1,
@@ -158,7 +284,7 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   profileImage: {
     width: 120,
@@ -177,6 +303,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: 'white',
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F0FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  roleBadgeText: {
+    fontSize: 14,
+    color: '#0066FF',
+    fontWeight: '500',
+    marginLeft: 4,
   },
   infoSection: {
     width: '100%',
@@ -209,32 +350,43 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  editButtonIcon: {
+    marginRight: 8,
   },
   editButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
   },
-  passwordSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  menuContainer: {
     backgroundColor: 'white',
     marginTop: 24,
     marginHorizontal: 16,
     borderRadius: 16,
-    padding: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
-  passwordLeft: {
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F2F5',
+  },
+  menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  lockIconContainer: {
+  iconContainer: {
     backgroundColor: '#F0F2F5',
     width: 44,
     height: 44,
@@ -243,14 +395,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  passwordTitle: {
+  logoutIconContainer: {
+    backgroundColor: '#FEF2F2',
+  },
+  menuTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
   },
-  passwordSubtitle: {
+  menuSubtitle: {
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  logoutMenuItem: {
+    borderBottomWidth: 0,
+  },
+  logoutTitle: {
+    color: '#FF3B30',
+  },
+  versionText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+    marginTop: 20,
   },
 });

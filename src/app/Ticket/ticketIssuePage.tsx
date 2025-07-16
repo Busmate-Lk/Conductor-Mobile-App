@@ -455,6 +455,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 35,
   },
   actionButton: {
     flex: 1,

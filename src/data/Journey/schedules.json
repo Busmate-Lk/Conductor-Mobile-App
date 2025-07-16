@@ -70,5 +70,17 @@
     "seatsOccupied": 42,
     "totalSeats": 45,
     "status": "completed"
+  },
+   {
+    "id": "7",
+    "from": "Kandy",
+    "to": "Colombo",
+    "busNumber": "KB-5432",
+    "startTime": "07:45 AM",
+    "endTime": "12:15 PM",
+    "date": "07/03/2025",
+    "seatsOccupied": 42,
+    "totalSeats": 45,
+    "status": "upcoming"
   }
 ]

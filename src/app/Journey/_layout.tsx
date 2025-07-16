@@ -9,7 +9,7 @@ export default function JourneyLayout() {
   // Custom back button that takes users back to the home page
   const BackToHomeButton = () => (
     <TouchableOpacity 
-      onPress={() => router.push("/(tabs)/home")}
+      onPress={() => router.push("/")}
       style={{ marginLeft: 8, marginRight: 8 }}
     >
       <Ionicons name="home-outline" size={24} color="#FFFFFF" />

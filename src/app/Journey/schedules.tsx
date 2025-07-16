@@ -1,18 +1,18 @@
+import ScheduleCard from '@/components/Journey/ScheduleCard';
+import { useSchedules } from '@/hooks/Journey/useSchedules';
+import { TimeFilter } from '@/types/Journey/schedule';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  ActivityIndicator,
+  FlatList,
   SafeAreaView,
   StatusBar,
-  FlatList,
-  ActivityIndicator
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import ScheduleCard from '@/components/Journey/ScheduleCard';
-import { Ionicons } from '@expo/vector-icons';
-import { useSchedules } from '@/hooks/useSchedules';
-import { TimeFilter, Schedule } from '@/types/schedule';
 
 
 

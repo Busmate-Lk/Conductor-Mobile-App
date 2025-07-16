@@ -7,49 +7,81 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { usePassengerCard } from '@/hooks/Journey/usePassegerCard';
 
 export default function PassengerDetailsScreen() {
-  // This could come from route params in a real app
-  const passengerData = {
-    name: 'Kamal Perera',
-    isValidated: true,
-    ticket: {
-      seatNumber: 'A-12',
-      ticketId: '#TK2024001234',
-      paymentType: 'QR Payment',
-      passengerCount: 1,
-      fare: 450.00,
-    },
-    contact: {
-      phone: '+94 77 123 4567',
-    },
-    booking: {
-      bookingTime: '2024-01-15 08:30 AM',
-      arrivalTime: '2024-01-15 09:15 AM',
-    },
-    validation: {
-      status: 'Ticket has been validated',
-      timestamp: '2024-01-15 09:16 AM',
-    }
-  };
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const {
+    passenger,
+    loading,
+    error,
+    actionLoading,
+    handleRevalidate,
+    handleInvalidate,
+    handleShare,
+    handleMessage,
+    handleCall,
+    refreshPassenger,
+    setError,
+    getValidationStatusColor,
+    getPaymentTypeColor,
+  } = usePassengerCard(id);
 
-  const handleRevalidate = () => {
-    console.log('Revalidating ticket...');
-    // Implementation for revalidation
-  };
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066FF" />
+          <Text style={styles.loadingText}>Loading passenger details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const handleShare = () => {
-    console.log('Sharing passenger details...');
-    // Implementation for sharing
-  };
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              refreshPassenger();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const handleMessage = () => {
-    console.log('Sending message to passenger...');
-    // Implementation for messaging
-  };
+  // No passenger found
+  if (!passenger) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="person-outline" size={48} color="#999" />
+          <Text style={styles.errorText}>Passenger not found</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -61,7 +93,9 @@ export default function PassengerDetailsScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Passenger Details</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity style={styles.refreshButton} onPress={refreshPassenger}>
+          <Ionicons name="refresh" size={20} color="#333" />
+        </TouchableOpacity>
       </View> */}
 
       <ScrollView style={styles.container}>
@@ -72,13 +106,20 @@ export default function PassengerDetailsScreen() {
           </View>
           
           <View style={styles.nameContainer}>
-            <Text style={styles.passengerName}>{passengerData.name}</Text>
-            {passengerData.isValidated && (
-              <View style={styles.validatedBadge}>
-                <Ionicons name="checkmark" size={14} color="white" />
-                <Text style={styles.validatedText}>Validated</Text>
-              </View>
-            )}
+            <Text style={styles.passengerName}>{passenger.name}</Text>
+            <View style={[
+              styles.validationBadge,
+              { backgroundColor: getValidationStatusColor() }
+            ]}>
+              <Ionicons 
+                name={passenger.isValidated ? "checkmark" : "close"} 
+                size={14} 
+                color="white" 
+              />
+              <Text style={styles.validationText}>
+                {passenger.validationStatus.charAt(0).toUpperCase() + passenger.validationStatus.slice(1)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -94,7 +135,7 @@ export default function PassengerDetailsScreen() {
               <MaterialIcons name="event-seat" size={20} color="#666" />
               <Text style={styles.labelText}>Seat Number</Text>
             </View>
-            <Text style={styles.infoValue}>{passengerData.ticket.seatNumber}</Text>
+            <Text style={styles.infoValue}>{passenger.ticket.seatNumber}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -102,7 +143,7 @@ export default function PassengerDetailsScreen() {
               <MaterialIcons name="credit-card" size={20} color="#666" />
               <Text style={styles.labelText}>Ticket ID</Text>
             </View>
-            <Text style={styles.infoValue}>{passengerData.ticket.ticketId}</Text>
+            <Text style={styles.infoValue}>{passenger.ticket.ticketId}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -110,8 +151,16 @@ export default function PassengerDetailsScreen() {
               <MaterialIcons name="payment" size={20} color="#666" />
               <Text style={styles.labelText}>Payment Type</Text>
             </View>
-            <View style={styles.paymentTypeBadge}>
-              <Text style={styles.paymentTypeText}>{passengerData.ticket.paymentType}</Text>
+            <View style={[
+              styles.paymentTypeBadge,
+              { backgroundColor: `${getPaymentTypeColor()}15` }
+            ]}>
+              <Text style={[
+                styles.paymentTypeText,
+                { color: getPaymentTypeColor() }
+              ]}>
+                {passenger.ticket.paymentType}
+              </Text>
             </View>
           </View>
 
@@ -120,7 +169,7 @@ export default function PassengerDetailsScreen() {
               <Ionicons name="people" size={20} color="#666" />
               <Text style={styles.labelText}>Passengers</Text>
             </View>
-            <Text style={styles.infoValue}>{passengerData.ticket.passengerCount}</Text>
+            <Text style={styles.infoValue}>{passenger.ticket.passengerCount}</Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -128,8 +177,18 @@ export default function PassengerDetailsScreen() {
               <MaterialIcons name="attach-money" size={20} color="#666" />
               <Text style={styles.labelText}>Fare Paid</Text>
             </View>
-            <Text style={styles.infoValue}>Rs. {passengerData.ticket.fare.toFixed(2)}</Text>
+            <Text style={styles.infoValue}>Rs. {passenger.ticket.fare.toFixed(2)}</Text>
           </View>
+
+          {passenger.ticket.bookingReference && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoLabel}>
+                <MaterialIcons name="receipt" size={20} color="#666" />
+                <Text style={styles.labelText}>Booking Ref</Text>
+              </View>
+              <Text style={styles.infoValue}>{passenger.ticket.bookingReference}</Text>
+            </View>
+          )}
         </View>
 
         {/* Contact Information */}
@@ -145,12 +204,35 @@ export default function PassengerDetailsScreen() {
               <Text style={styles.labelText}>Phone Number</Text>
             </View>
             <View style={styles.phoneContainer}>
-              <Text style={styles.infoValue}>{passengerData.contact.phone}</Text>
+              <Text style={styles.infoValue}>{passenger.contact.phone}</Text>
+              <TouchableOpacity style={styles.callButton} onPress={handleCall}>
+                <MaterialIcons name="call" size={18} color="white" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-                <MaterialIcons name="chat" size={20} color="white" />
+                <MaterialIcons name="chat" size={18} color="white" />
               </TouchableOpacity>
             </View>
           </View>
+
+          {passenger.contact.email && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoLabel}>
+                <MaterialIcons name="email" size={20} color="#666" />
+                <Text style={styles.labelText}>Email</Text>
+              </View>
+              <Text style={styles.infoValue}>{passenger.contact.email}</Text>
+            </View>
+          )}
+
+          {passenger.contact.emergencyContact && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoLabel}>
+                <MaterialIcons name="emergency" size={20} color="#666" />
+                <Text style={styles.labelText}>Emergency</Text>
+              </View>
+              <Text style={styles.infoValue}>{passenger.contact.emergencyContact}</Text>
+            </View>
+          )}
         </View>
 
         {/* Booking Details */}
@@ -162,12 +244,29 @@ export default function PassengerDetailsScreen() {
 
           <View style={styles.bookingRow}>
             <Text style={styles.bookingLabel}>Booking Time</Text>
-            <Text style={styles.bookingValue}>{passengerData.booking.bookingTime}</Text>
+            <Text style={styles.bookingValue}>{passenger.booking.bookingTime}</Text>
           </View>
 
           <View style={styles.bookingRow}>
             <Text style={styles.bookingLabel}>Arrival Time</Text>
-            <Text style={styles.bookingValue}>{passengerData.booking.arrivalTime}</Text>
+            <Text style={styles.bookingValue}>{passenger.booking.arrivalTime}</Text>
+          </View>
+
+          {passenger.booking.departureTime && (
+            <View style={styles.bookingRow}>
+              <Text style={styles.bookingLabel}>Departure Time</Text>
+              <Text style={styles.bookingValue}>{passenger.booking.departureTime}</Text>
+            </View>
+          )}
+
+          <View style={styles.bookingRow}>
+            <Text style={styles.bookingLabel}>From</Text>
+            <Text style={styles.bookingValue}>{passenger.booking.boardingPoint}</Text>
+          </View>
+
+          <View style={styles.bookingRow}>
+            <Text style={styles.bookingLabel}>To</Text>
+            <Text style={styles.bookingValue}>{passenger.booking.destinationPoint}</Text>
           </View>
         </View>
 
@@ -175,27 +274,95 @@ export default function PassengerDetailsScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.validationHeader}>
             <Text style={styles.validationTitle}>Validation Status</Text>
-            <View style={styles.validationStatusIcon}>
-              <Ionicons name="checkmark" size={24} color="white" />
+            <View style={[
+              styles.validationStatusIcon,
+              { backgroundColor: getValidationStatusColor() }
+            ]}>
+              <Ionicons 
+                name={passenger.isValidated ? "checkmark" : "close"} 
+                size={24} 
+                color="white" 
+              />
             </View>
           </View>
-          <Text style={styles.validationStatusText}>{passengerData.validation.status}</Text>
-          <Text style={styles.validationTime}>Validated on: {passengerData.validation.timestamp}</Text>
+          <Text style={styles.validationStatusText}>{passenger.validation.status}</Text>
+          <Text style={styles.validationTime}>
+            {passenger.isValidated ? 'Validated' : 'Last updated'} on: {passenger.validation.timestamp}
+          </Text>
+          
+          {passenger.validation.validatedBy && (
+            <Text style={styles.validatedBy}>
+              By: {passenger.validation.validatedBy}
+            </Text>
+          )}
         </View>
 
+        {/* Special Requirements */}
+        {passenger.specialRequirements && passenger.specialRequirements.length > 0 && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="info" size={22} color="#0066FF" />
+              <Text style={styles.sectionTitle}>Special Requirements</Text>
+            </View>
+            
+            {passenger.specialRequirements.map((requirement, index) => (
+              <View key={index} style={styles.requirementItem}>
+                <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                <Text style={styles.requirementText}>{requirement}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Additional Notes */}
+        {passenger.additionalNotes && (
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="note" size={22} color="#0066FF" />
+              <Text style={styles.sectionTitle}>Additional Notes</Text>
+            </View>
+            <Text style={styles.notesText}>{passenger.additionalNotes}</Text>
+          </View>
+        )}
+
         {/* Extra space at the bottom for scrolling */}
-        <View style={{ height: 80 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.revalidateButton} onPress={handleRevalidate}>
-          <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-          <Text style={styles.revalidateText}>Re-validate Ticket</Text>
+        <TouchableOpacity 
+          style={[
+            styles.revalidateButton,
+            actionLoading && styles.disabledButton
+          ]} 
+          onPress={handleRevalidate}
+          disabled={actionLoading}
+        >
+          {actionLoading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="checkmark-circle-outline" size={20} color="white" />
+          )}
+          <Text style={styles.revalidateText}>
+            {passenger.isValidated ? 'Re-validate Ticket' : 'Validate Ticket'}
+          </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-          <Ionicons name="share-social-outline" size={22} color="#333" />
+        <TouchableOpacity 
+          style={styles.invalidateButton} 
+          onPress={() => handleInvalidate()}
+          disabled={actionLoading}
+        >
+          <Ionicons name="close-circle-outline" size={20} color="#FF3B30" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.shareButton} 
+          onPress={handleShare}
+          disabled={actionLoading}
+        >
+          <Ionicons name="share-social-outline" size={20} color="#333" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -224,9 +391,47 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  placeholder: {
-    width: 28, // To keep header centered
+  refreshButton: {
+    padding: 4,
   },
+  
+  // Loading & Error States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Content Styles
   container: {
     flex: 1,
     padding: 16,
@@ -261,16 +466,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
   },
-  validatedBadge: {
+  validationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#22C55E',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
     alignSelf: 'flex-start',
   },
-  validatedText: {
+  validationText: {
     color: 'white',
     fontSize: 13,
     fontWeight: '500',
@@ -319,14 +523,12 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   paymentTypeBadge: {
-    backgroundColor: '#EEF3FF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   paymentTypeText: {
     fontSize: 14,
-    color: '#0066FF',
     fontWeight: '500',
   },
   contactRow: {
@@ -338,14 +540,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  callButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#22C55E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
   messageButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#0066FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
+    marginLeft: 8,
   },
   bookingRow: {
     flexDirection: 'row',
@@ -374,7 +585,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#22C55E',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -386,6 +596,26 @@ const styles = StyleSheet.create({
   validationTime: {
     fontSize: 14,
     color: '#666',
+  },
+  validatedBy: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementText: {
+    fontSize: 15,
+    color: '#333',
+    marginLeft: 8,
+  },
+  notesText: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
   },
   bottomActions: {
     flexDirection: 'row',
@@ -406,13 +636,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066FF',
     paddingVertical: 12,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: 8,
   },
   revalidateText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  invalidateButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   shareButton: {
     width: 44,
@@ -421,5 +660,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

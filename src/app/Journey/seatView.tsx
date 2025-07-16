@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,142 +8,91 @@ import {
   StatusBar,
   ScrollView,
   TextInput,
-  FlatList
+  FlatList,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useSeatView } from '@/hooks/Journey/useSeatView';
+import { Passenger } from '@/types/Journey/seat';
 
 export default function SeatViewScreen() {
-  const [activeTab, setActiveTab] = useState('seatView');
-  
-  // Seat status data
-  // 0 = Available, 1 = Booked & Validated, 2 = Booked Not Validated, 3 = Blocked/Canceled
-  const seatData: { [key: string]: number } = {
-    'A1': 1, 'A2': 2, 'A3': 0, 'A4': 1, 'A5': 0,
-    'B1': 1, 'B2': 1, 'B3': 2, 'B4': 0, 'B5': 1,
-    'C1': 3, 'C2': 1, 'C3': 1, 'C4': 2, 'C5': 0,
-    'D1': 1, 'D2': 0, 'D3': 1, 'D4': 1, 'D5': 2,
-    'E1': 2, 'E2': 1, 'E3': 0, 'E4': 0, 'E5': 1,
-    'F1': 1, 'F2': 1, 'F3': 2, 'F4': 1, 'F5': 0,
-    'G1': 0, 'G2': 1, 'G3': 1, 'G4': 2, 'G5': 1,
-    'H1': 1, 'H2': 0, 'H3': 0, 'H4': 1, 'H5': 1,
-    'I1': 2, 'I2': 1, 'I3': 1, 'I4': 0, 'I5': 1,
-    'J1': 1, 'J2': 1, 'J3': 2, 'J4': 1, 'J5': 0,
-    'K1': 1, 'K2': 0, 'K3': 2, 'K4': 1, 'K5': 0,
-  };
-  
-  // Trip data for passenger list
-  const tripData = {
-    id: 'BR-2024-001',
-    route: {
-      from: 'Colombo',
-      to: 'Kandy'
-    },
-    totalPassengers: 32,
-    validatedPassengers: 28,
-    pendingPassengers: 4
-  };
-  
-  // Passenger data
-  type Passenger = {
-    id: string;
-    name: string;
-    mobile: string;
-    seat: string;
-    isValidated: boolean;
-  };
+  const {
+    seatData,
+    filteredPassengers,
+    tripData,
+    busLayout,
+    stats,
+    activeTab,
+    searchQuery,
+    loading,
+    error,
+    setActiveTab,
+    setSearchQuery,
+    setError,
+    getSeatStyle,
+    handleSeatPress,
+  } = useSeatView();
 
-  const passengers: Passenger[] = [
-    {
-      id: '1',
-      name: 'Kamal Perera',
-      mobile: '+94 77 123 4567',
-      seat: 'A12',
-      isValidated: true
-    },
-    {
-      id: '2',
-      name: 'Nimal Silva',
-      mobile: '+94 71 987 6543',
-      seat: 'B05',
-      isValidated: false
-    },
-    {
-      id: '3',
-      name: 'Saman Fernando',
-      mobile: '+94 76 555 1234',
-      seat: 'C08',
-      isValidated: true
-    },
-    {
-      id: '4',
-      name: 'Ruwan Jayasinghe',
-      mobile: '+94 78 999 8888',
-      seat: 'D15',
-      isValidated: false
-    },
-    {
-      id: '5',
-      name: 'Chamara Wickramasinghe',
-      mobile: '+94 75 444 3333',
-      seat: 'E22',
-      isValidated: true
-    },
-    {
-      id: '6',
-      name: 'Priyanka Rathnayake',
-      mobile: '+94 72 666 7777',
-      seat: 'F01',
-      isValidated: true
-    }
-  ];
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
-  const cols = [1, 2, 3, 4, 5];
-  
-  // Function to get style for a seat based on its status
-  const getSeatStyle = (status: number) => {
-    switch(status) {
-      case 1: // Booked & Validated
-        return styles.seatBookedValidated;
-      case 2: // Booked Not Validated
-        return styles.seatBookedNotValidated;
-      case 3: // Blocked/Canceled
-        return styles.seatBlocked;
-      default: // Available
-        return styles.seatAvailable;
-    }
-  };
-  
-  // Function to handle seat press
-  const handleSeatPress = (seatId: string) => {
-    console.log(`Seat ${seatId} pressed`);
-    // Additional logic for seat selection
-  };
-  
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066FF" />
+          <Text style={styles.loadingText}>Loading seat data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => setError(null)}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Function to render a seat
   const renderSeat = (row: string, col: number) => {
     const seatId = `${row}${col}`;
     const seatStatus = seatData[seatId] || 0;
+    const styleName = getSeatStyle(seatStatus);
     
     return (
       <TouchableOpacity
         key={seatId}
-        style={[styles.seat, getSeatStyle(seatStatus)]}
+        style={[styles.seat, styles[styleName]]}
         onPress={() => handleSeatPress(seatId)}
       >
-        <Text style={styles.seatText}>{seatId}</Text>
+        <Text style={[
+          styles.seatText,
+          seatStatus !== 0 && styles.seatTextWhite
+        ]}>
+          {seatId}
+        </Text>
       </TouchableOpacity>
     );
   };
-  
+
   // Function to render a row of seats
   const renderRow = (row: string) => {
+    if (!busLayout) return null;
+    
     return (
       <View key={row} style={styles.seatRow}>
-        {cols.map(col => {
+        {busLayout.cols.map(col => {
           // Create gap in the middle (aisle)
           if (col === 3) {
             return (
@@ -158,20 +107,15 @@ export default function SeatViewScreen() {
       </View>
     );
   };
-  
-  // Filter passengers based on search query
-  const filteredPassengers = passengers.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.mobile.includes(searchQuery) ||
-      p.seat.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
-  // Render a passenger item
+  // Render passenger item
   const renderPassengerItem = ({ item }: { item: Passenger }) => (
     <TouchableOpacity 
       style={styles.passengerCard}
-      onPress={() => console.log(`View passenger ${item.name}`)}
+      onPress={() => router.push({ 
+        pathname: '/Journey/passengerCard', 
+        params: { id: item.id } 
+      })}
     >
       <View style={styles.passengerInfo}>
         <View style={styles.avatarContainer}>
@@ -186,7 +130,7 @@ export default function SeatViewScreen() {
       
       <View style={styles.passengerActions}>
         <View style={styles.seatBadge}>
-          <Text style={styles.seatText}>{item.seat}</Text>
+          <Text style={styles.seatBadgeText}>{item.seat}</Text>
         </View>
         
         {item.isValidated ? (
@@ -203,23 +147,10 @@ export default function SeatViewScreen() {
       </View>
     </TouchableOpacity>
   );
-  
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Header */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {activeTab === 'seatView' ? 'Seat View' : 'Passenger List'}
-        </Text>
-        <TouchableOpacity style={styles.moreButton}>
-          <MaterialIcons name="more-vert" size={24} color="#333" />
-        </TouchableOpacity>
-      </View> */}
       
       {/* Tab Toggle */}
       <View style={styles.tabContainer}>
@@ -243,33 +174,48 @@ export default function SeatViewScreen() {
             color={activeTab === 'passengerList' ? "#fff" : "#333"} 
           />
           <Text style={[styles.tabText, activeTab === 'passengerList' && styles.activeTabText]}>
-            Passenger List
+            Passenger List ({filteredPassengers.length})
           </Text>
         </TouchableOpacity>
       </View>
       
       {/* Seat View Tab */}
-      {activeTab === 'seatView' && (
+      {activeTab === 'seatView' && busLayout && (
         <ScrollView style={styles.container}>
-          {/* Bus Layout Title */}
-            {/* Driver Seat */}
-            <View style={{ alignItems: 'flex-end', marginBottom: 8, marginRight: 85 }}>
-              <View style={{
-              width: 50,
-              height: 50,
-              borderRadius: 6,
-              backgroundColor: '#333',
-              justifyContent: 'center',
-              alignItems: 'center',
-              }}>
+          {/* Driver Seat */}
+          <View style={styles.driverContainer}>
+            <View style={styles.driverSeat}>
               <Ionicons name="person" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, marginTop: 2 }}>Driver</Text>
-              </View>
+              <Text style={styles.driverText}>Driver</Text>
             </View>
+          </View>
           
           {/* Seat Layout */}
           <View style={styles.busLayout}>
-            {rows.map(row => renderRow(row))}
+            {busLayout.rows.map(row => renderRow(row))}
+          </View>
+          
+          {/* Stats Summary */}
+          <View style={styles.statsContainer}>
+            <Text style={styles.statsTitle}>Seat Summary</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats.availableSeats}</Text>
+                <Text style={styles.statLabel}>Available</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats.bookedValidated}</Text>
+                <Text style={styles.statLabel}>Validated</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats.bookedNotValidated}</Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats.blockedSeats}</Text>
+                <Text style={styles.statLabel}>Blocked</Text>
+              </View>
+            </View>
           </View>
           
           {/* Legend */}
@@ -301,13 +247,12 @@ export default function SeatViewScreen() {
             </View>
           </View>
           
-          {/* Bottom padding for scroll */}
           <View style={{height: 40}} />
         </ScrollView>
       )}
       
       {/* Passenger List Tab */}
-      {activeTab === 'passengerList' && (
+      {activeTab === 'passengerList' && tripData && (
         <View style={styles.passengerListContainer}>
           {/* Search Bar */}
           <View style={styles.searchContainer}>
@@ -325,11 +270,11 @@ export default function SeatViewScreen() {
           <View style={styles.tripSummaryCard}>
             <View style={styles.tripSummaryLeft}>
               <View style={styles.busIconContainer}>
-          <Ionicons name="bus" size={24} color="#0066FF" />
+                <Ionicons name="bus" size={24} color="#0066FF" />
               </View>
               <View>
-          <Text style={styles.tripIdText}>Trip #{tripData.id}</Text>
-          <Text style={styles.passengerCountText}>{tripData.totalPassengers} passengers</Text>
+                <Text style={styles.tripIdText}>Trip #{tripData.id}</Text>
+                <Text style={styles.passengerCountText}>{tripData.totalPassengers} passengers</Text>
               </View>
             </View>
             
@@ -342,44 +287,18 @@ export default function SeatViewScreen() {
           {/* Passenger List */}
           <FlatList
             data={filteredPassengers}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-          style={styles.passengerCard}
-          onPress={() => router.push({ pathname: '/Journey/passengerCard', params: { id: item.id } })}
-              >
-          <View style={styles.passengerInfo}>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={24} color="#666" />
-            </View>
-            
-            <View style={styles.passengerDetails}>
-              <Text style={styles.passengerName}>{item.name}</Text>
-              <Text style={styles.passengerMobile}>Mobile: {item.mobile}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.passengerActions}>
-            <View style={styles.seatBadge}>
-              <Text style={styles.seatText}>{item.seat}</Text>
-            </View>
-            
-            {item.isValidated ? (
-              <View style={styles.validatedBadge}>
-                <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
-              </View>
-            ) : (
-              <View style={styles.pendingBadge}>
-                <Ionicons name="close-circle" size={24} color="#FF3B30" />
-              </View>
-            )}
-            
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </View>
-              </TouchableOpacity>
-            )}
+            renderItem={renderPassengerItem}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={48} color="#999" />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'No passengers match your search' : 'No passengers found'}
+                </Text>
+              </View>
+            }
           />
         </View>
       )}
@@ -387,7 +306,112 @@ export default function SeatViewScreen() {
   );
 }
 
+// Keep all your existing styles and add these new ones:
 const styles = StyleSheet.create({
+  // ... (keep all your existing styles)
+  
+  // Add these new styles:
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  driverContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 8,
+    marginRight: 85,
+  },
+  driverSeat: {
+    width: 50,
+    height: 50,
+    borderRadius: 6,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  driverText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  statsContainer: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+  },
+  statsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0066FF',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  seatTextWhite: {
+    color: '#FFFFFF',
+  },
+  seatBadgeText: {
+    fontWeight: '500',
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
+
+  // ... (rest of your existing styles)
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',

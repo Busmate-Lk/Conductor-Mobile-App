@@ -1,165 +1,296 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-const { height } = Dimensions.get('window');
-
-type Props = {
+interface FingerprintModalProps {
   visible: boolean;
   onCancel: () => void;
   onAuthenticate: () => void;
-};
+}
 
-export default function FingerprintModal({ visible, onCancel, onAuthenticate }: Props) {
-  const modalAnimation = useRef(new Animated.Value(height)).current;
+export default function FingerprintModal({ visible, onCancel, onAuthenticate }: FingerprintModalProps) {
+  const [pulseAnim] = useState(new Animated.Value(1));
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authMessage, setAuthMessage] = useState('Place your finger on the sensor');
+  const [authFailed, setAuthFailed] = useState(false);
 
   useEffect(() => {
     if (visible) {
-      Keyboard.dismiss();
-      Animated.spring(modalAnimation, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }).start();
+      startPulseAnimation();
+      resetState();
+      // Automatically trigger biometric authentication when modal opens
+      handleBiometricAuth();
     } else {
-      Animated.timing(modalAnimation, {
-        toValue: height,
-        duration: 600,
-        useNativeDriver: true,
-      }).start();
+      stopPulseAnimation();
+      resetState();
     }
   }, [visible]);
 
-  if (!visible) return null;
+  const resetState = () => {
+    setAuthMessage('Place your finger on the sensor');
+    setIsAuthenticating(false);
+    setAuthFailed(false);
+  };
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const stopPulseAnimation = () => {
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(1);
+  };
+
+  const handleBiometricAuth = async () => {
+    try {
+      setIsAuthenticating(true);
+      setAuthFailed(false);
+      setAuthMessage('Authenticating...');
+
+      // Check if biometric authentication is available
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      if (!compatible) {
+          setAuthMessage('Fingerprint authentication not supported');
+        setAuthFailed(true);
+        Alert.alert('Error', 'Fingerprint authentication is not supported on this device');
+        return;
+      }
+
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!enrolled) {
+        setAuthMessage('No fingerprint credentials found');
+        setAuthFailed(true);
+        Alert.alert('Error', 'No fingerprint is set up on this device');
+        return;
+      }
+
+      // Always show fingerprint message regardless of device capabilities
+      setAuthMessage('Use your Fingerprint');
+
+      // Authenticate with biometrics
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate as Conductor',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use Password',
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        setAuthMessage('Authentication successful!');
+        setAuthFailed(false);
+        // Small delay to show success message
+        setTimeout(() => {
+          onAuthenticate();
+        }, 500);
+      } else {
+        setAuthFailed(true);
+        // Handle different failure scenarios
+        if (result.error === 'user_cancel') {
+          setAuthMessage('Authentication cancelled by user');
+          setTimeout(() => {
+            onCancel();
+          }, 1000);
+        } else if (result.error === 'system_cancel') {
+          setAuthMessage('Authentication cancelled by system');
+        } else if (result.error === 'user_fallback') {
+          setAuthMessage('Fallback authentication selected');
+        } else if (result.error === 'app_cancel') {
+          setAuthMessage('Authentication cancelled by app');
+        } else {
+          setAuthMessage('Authentication failed. Please try again.');
+        }
+        
+        console.log('Biometric authentication failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Biometric authentication error:', error);
+      setAuthMessage('Authentication error occurred');
+      setAuthFailed(true);
+      Alert.alert('Error', 'An error occurred during authentication. Please try again.');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleRetry = () => {
+    handleBiometricAuth();
+  };
 
   return (
-    <TouchableWithoutFeedback onPress={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
       <View style={styles.overlay}>
-        <Animated.View
-          style={[
-            styles.fingerprintModal,
-            { transform: [{ translateY: modalAnimation }] }
-          ]}
-          pointerEvents="auto"
-        >
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <FontAwesome5 name="lock" size={20} color="#D4AF37" />
-                <Text style={styles.modalTitle}> Authentication Required</Text>
-              </View>
-              <Text style={styles.modalSubtitle}>Verify your identity</Text>
-              <Text style={styles.modalInstruction}>Scan your fingerprint to authenticate</Text>
-              <Text style={styles.modalSubInstruction}>Touch the fingerprint sensor</Text>
-              <TouchableOpacity
-                style={styles.fingerprintScan}
-                onPress={onAuthenticate}
-              >
-                <View style={styles.fingerprintInner}>
-                  <Ionicons name="finger-print" size={40} color="white" />
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={onCancel}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.copyright}>© {new Date().getFullYear()} Busmate LK. All rights reserved.</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Fingerprint Authentication</Text>
+            <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.content}>
+            <Animated.View
+              style={[
+                styles.fingerprintContainer,
+                {
+                  transform: [{ scale: pulseAnim }],
+                  opacity: isAuthenticating ? 0.7 : 1,
+                },
+              ]}
+            >
+              {isAuthenticating ? (
+                <ActivityIndicator size="large" color="#0066FF" />
+              ) : authFailed ? (
+                <Ionicons name="close-circle" size={80} color="#FF3B30" />
+              ) : authMessage.includes('successful') ? (
+                <Ionicons name="checkmark-circle" size={80} color="#00CC66" />
+              ) : (
+                <Ionicons name="finger-print" size={80} color="#0066FF" />
+              )}
+            </Animated.View>
+
+            <Text style={[
+              styles.message,
+              authFailed && styles.errorMessage,
+              authMessage.includes('successful') && styles.successMessage
+            ]}>
+              {authMessage}
+            </Text>
+
+            <View style={styles.buttonContainer}>
+              {!isAuthenticating && authFailed && !authMessage.includes('cancelled') && (
+                <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              )}
+              
+              {!authMessage.includes('successful') && (
+                <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </TouchableWithoutFeedback>
-        </Animated.View>
+          </View>
+        </View>
       </View>
-    </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'flex-end',
-  },
-  fingerprintModal: {
-    width: '100%',
-    height: height * 0.5,
-  },
-  modalContent: {
     flex: 1,
-    backgroundColor: '#15202B',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 24,
-    justifyContent: 'flex-start',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 40,
   },
-  modalHeader: {
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    width: '85%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: 'white',
-  },
-  modalSubtitle: {
+  title: {
     fontSize: 18,
-    color: '#E5E7EB',
-    marginBottom: 24,
+    fontWeight: '600',
+    color: '#333',
   },
-  modalInstruction: {
-    fontSize: 16,
-    color: '#D1D5DB',
-    marginBottom: 8,
-    textAlign: 'center',
+  closeButton: {
+    padding: 4,
   },
-  modalSubInstruction: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginBottom: 40,
-    textAlign: 'center',
+  content: {
+    padding: 30,
+    alignItems: 'center',
   },
-  fingerprintScan: {
-    width: 90,
-    height: 90,
+  fingerprintContainer: {
+    width: 120,
+    height: 120,
     borderRadius: 60,
+    backgroundColor: '#F0F6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-    padding: 8,
+    borderColor: '#E6F0FF',
   },
-  fingerprintInner: {
+  message: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 30,
+  },
+  errorMessage: {
+    color: '#FF3B30',
+  },
+  successMessage: {
+    color: '#00CC66',
+  },
+  buttonContainer: {
     width: '100%',
-    height: '100%',
-    borderRadius: 50,
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
+    gap: 12,
+  },
+  retryButton: {
+    backgroundColor: '#0066FF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     alignItems: 'center',
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   cancelButton: {
-    width: '80%',
-    height: 40,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 10,
   },
-  cancelText: {
+  cancelButtonText: {
+    color: '#666',
     fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  copyright: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    position: 'absolute',
-    bottom: 40,
-    textAlign: 'center',
-  }
 });

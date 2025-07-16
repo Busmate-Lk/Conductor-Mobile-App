@@ -18,15 +18,13 @@ export default function JourneyScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.backButton}
-           onPress={() => { router.push('/(tabs)/home'); }}
+           onPress={() => { router.push('/'); }}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Ongoing Journey</Text>
         </View>
-        {/* <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-        </TouchableOpacity> */}
+        
       </View>
       
       <ScrollView style={styles.container}>
@@ -224,7 +222,7 @@ export default function JourneyScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0066FF',
   },
   container: {
     flex: 1,
@@ -237,9 +235,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0066FF',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    
+    
   },
   headerLeft: {
     flexDirection: 'row',
@@ -251,6 +251,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   journeyCard: {
     backgroundColor: '#FFFFFF',

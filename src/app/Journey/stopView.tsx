@@ -7,99 +7,103 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-
-// Define the Stop type
-interface Stop {
-  id: number;
-  number: number;
-  name: string;
-  expected: string;
-  actual?: string;
-  status?: 'ontime' | 'late' | 'current';
-  completed: boolean;
-  isFinal?: boolean;
-}
+import { router, useLocalSearchParams } from 'expo-router';
+import { useStopView } from '@/hooks/Journey/useStopView';
+import { Stop } from '@/types/Journey/stop';
 
 export default function StopViewScreen() {
-  // Journey data - this would typically come from API or route params
-  const journeyData = {
-    route: {
-      number: '138',
-      name: 'Colombo - Negombo',
-      startTime: '8:30 AM',
-    },
-    nextStop: {
-      name: 'Kadawatha',
-      eta: '9:15 AM',
-    },
-    stops: [
-      {
-        id: 1,
-        number: 1,
-        name: 'Pettah',
-        expected: '8:30 AM',
-        actual: '8:30 AM',
-        status: 'ontime' as const,
-        completed: true,
-      },
-      {
-        id: 2,
-        number: 2,
-        name: 'Maradana',
-        expected: '8:45 AM',
-        actual: '8:52 AM',
-        status: 'late' as const,
-        completed: true,
-      },
-      {
-        id: 3,
-        number: 3,
-        name: 'Kelaniya',
-        expected: '9:00 AM',
-        actual: '9:01 AM',
-        status: 'ontime' as const,
-        completed: true,
-      },
-      {
-        id: 4,
-        number: 4,
-        name: 'Kadawatha',
-        expected: '9:15 AM',
-        actual: 'Arriving...',
-        status: 'current' as const,
-        completed: false,
-      },
-      {
-        id: 5,
-        number: 5,
-        name: 'Kiribathgoda',
-        expected: '9:30 AM',
-        completed: false,
-      },
-      {
-        id: 6,
-        number: 6,
-        name: 'Wattala',
-        expected: '9:45 AM',
-        completed: false,
-      },
-      {
-        id: 7,
-        number: 7,
-        name: 'Negombo',
-        expected: '10:00 AM',
-        completed: false,
-        isFinal: true,
-      },
-    ],
-    summary: {
-      completedStops: '3/7 Stops',
-      onTime: '2/3',
-      etaFinal: '10:05 AM',
-    },
+  const { journeyId } = useLocalSearchParams<{ journeyId?: string }>();
+  const {
+    journeyData,
+    loading,
+    error,
+    actionLoading,
+    markStopArrived,
+    markStopDeparted,
+    refreshJourney,
+    setError,
+    getStopStatusStyle,
+    getJourneyProgress,
+  } = useStopView(journeyId);
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066FF" />
+          <Text style={styles.loadingText}>Loading journey data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              refreshJourney();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No journey data
+  if (!journeyData) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="bus-outline" size={48} color="#999" />
+          <Text style={styles.errorText}>No journey data found</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Handle stop action
+  const handleStopAction = (stop: Stop, action: 'arrived' | 'departed') => {
+    Alert.alert(
+      `Mark ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+      `Mark ${stop.name} as ${action}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            const result = action === 'arrived' 
+              ? await markStopArrived(stop.id)
+              : await markStopDeparted(stop.id);
+              
+            if (result?.success) {
+              Alert.alert('Success', result.message);
+            } else {
+              Alert.alert('Error', result?.message || 'Failed to update stop');
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Render status indicator for a stop
@@ -114,32 +118,43 @@ export default function StopViewScreen() {
 
     if (stop.status === 'current') {
       return (
-        <View style={styles.nextStopBadge}>
-          <Text style={styles.nextStopText}>Next Stop</Text>
+        <View>
+          <View style={styles.nextStopBadge}>
+            <Text style={styles.nextStopText}>Current Stop</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleStopAction(stop, 'arrived')}
+            disabled={actionLoading}
+          >
+            <Text style={styles.actionButtonText}>Mark Arrived</Text>
+          </TouchableOpacity>
         </View>
       );
     }
 
-    if (stop.status === 'ontime') {
+    if (stop.status === 'completed' || (stop.completed && stop.delayMinutes !== undefined)) {
+      const isLate = stop.delayMinutes && stop.delayMinutes > 0;
       return (
         <View>
-          <View style={styles.onTimeBadge}>
-            <Ionicons name="checkmark" size={12} color="#22C55E" />
-            <Text style={styles.onTimeText}>On Time</Text>
+          <View style={isLate ? styles.lateBadge : styles.onTimeBadge}>
+            <Ionicons 
+              name={isLate ? "time" : "checkmark"} 
+              size={12} 
+              color={isLate ? "#FF3B30" : "#22C55E"} 
+            />
+            <Text style={isLate ? styles.lateText : styles.onTimeText}>
+              {isLate ? `Late ${stop.delayMinutes}min` : 'On Time'}
+            </Text>
           </View>
-          <Text style={styles.actualTimeOnTime}>Actual: {stop.actual}</Text>
-        </View>
-      );
-    }
-
-    if (stop.status === 'late') {
-      return (
-        <View>
-          <View style={styles.lateBadge}>
-            <MaterialCommunityIcons name="clock-alert-outline" size={12} color="#FF3B30" />
-            <Text style={styles.lateText}>Late</Text>
-          </View>
-          <Text style={styles.actualTimeLate}>Actual: {stop.actual}</Text>
+          <Text style={isLate ? styles.actualTimeLate : styles.actualTimeOnTime}>
+            Actual: {stop.actual}
+          </Text>
+          {stop.departureTime && (
+            <Text style={styles.departureTime}>
+              Departed: {stop.departureTime}
+            </Text>
+          )}
         </View>
       );
     }
@@ -149,7 +164,9 @@ export default function StopViewScreen() {
 
   // Render time marker (circle) for a stop
   const renderTimeMarker = (stop: Stop) => {
-    if (stop.status === 'current') {
+    const statusStyle = getStopStatusStyle(stop);
+    
+    if (statusStyle === 'current') {
       return (
         <View style={styles.currentStopMarker}>
           <View style={styles.currentStopInner} />
@@ -157,10 +174,18 @@ export default function StopViewScreen() {
       );
     }
 
-    if (stop.completed) {
+    if (statusStyle === 'completed') {
       return (
         <View style={styles.completedStopMarker}>
-          <Ionicons name="arrow-down" size={20} color="white" />
+          <Ionicons name="checkmark" size={20} color="white" />
+        </View>
+      );
+    }
+
+    if (statusStyle === 'late') {
+      return (
+        <View style={styles.lateStopMarker}>
+          <Ionicons name="time" size={20} color="white" />
         </View>
       );
     }
@@ -168,25 +193,11 @@ export default function StopViewScreen() {
     return <View style={styles.upcomingStopMarker} />;
   };
 
+  const progress = getJourneyProgress();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Header */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <View style={styles.titleContainer}>
-          <Ionicons name="bus" size={22} color="#0066FF" style={styles.titleIcon} />
-          <Text style={styles.headerTitle}>Stop Overview</Text>
-        </View>
-        
-        <TouchableOpacity style={styles.moreButton}>
-          <MaterialIcons name="more-vert" size={24} color="#333" />
-        </TouchableOpacity>
-      </View> */}
       
       {/* Route Info Banner */}
       <View style={styles.routeBanner}>
@@ -198,6 +209,7 @@ export default function StopViewScreen() {
         <View style={styles.journeyInfo}>
           <Text style={styles.journeyLabel}>Journey Started</Text>
           <Text style={styles.journeyTime}>{journeyData.route.startTime}</Text>
+          <Text style={styles.progressText}>{progress.completed}/{progress.total} stops</Text>
         </View>
       </View>
       
@@ -210,7 +222,26 @@ export default function StopViewScreen() {
             <Text style={styles.nextStopName}>
               {journeyData.nextStop.name} - ETA {journeyData.nextStop.eta}
             </Text>
+            {journeyData.nextStop.distance && (
+              <Text style={styles.nextStopDistance}>
+                {journeyData.nextStop.distance} away
+              </Text>
+            )}
           </View>
+        </View>
+        
+        {/* Journey Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <Text style={styles.progressBarLabel}>Journey Progress</Text>
+          <View style={styles.progressBar}>
+            <View 
+              style={[
+                styles.progressBarFill,
+                { width: `${progress.percentage}%` }
+              ]} 
+            />
+          </View>
+          <Text style={styles.progressBarText}>{progress.percentage}% Complete</Text>
         </View>
         
         {/* Stops Timeline */}
@@ -270,6 +301,28 @@ export default function StopViewScreen() {
           </View>
         </View>
         
+        {/* Additional Journey Stats */}
+        {journeyData.summary.totalDistance && (
+          <View style={styles.additionalStatsContainer}>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Total Distance:</Text>
+              <Text style={styles.statValue}>{journeyData.summary.totalDistance}</Text>
+            </View>
+            {journeyData.summary.averageSpeed && (
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Average Speed:</Text>
+                <Text style={styles.statValue}>{journeyData.summary.averageSpeed}</Text>
+              </View>
+            )}
+            {journeyData.summary.delayTotal && (
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Total Delay:</Text>
+                <Text style={styles.statValueRed}>{journeyData.summary.delayTotal}</Text>
+              </View>
+            )}
+          </View>
+        )}
+        
         {/* Bottom padding for scroll */}
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -282,32 +335,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  
+  // Loading & Error States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderRadius: 8,
   },
-  backButton: {
-    padding: 4,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  titleIcon: {
-    marginRight: 6,
-  },
-  headerTitle: {
-    fontSize: 18,
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
-  moreButton: {
-    padding: 4,
-  },
+  
+  // Route Banner
   routeBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -343,20 +408,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  progressText: {
+    fontSize: 12,
+    color: '#0066FF',
+    marginTop: 2,
+  },
+  
+  // Content
   container: {
     flex: 1,
     padding: 16,
   },
+  
+  // Next Stop Card
   nextStopCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EEF3FF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   nextStopInfo: {
     marginLeft: 12,
+    flex: 1,
   },
   nextStopLabel: {
     fontSize: 16,
@@ -367,7 +442,41 @@ const styles = StyleSheet.create({
   nextStopName: {
     fontSize: 18,
     fontWeight: '500',
+    marginBottom: 2,
   },
+  nextStopDistance: {
+    fontSize: 14,
+    color: '#666',
+  },
+  
+  // Progress Bar
+  progressBarContainer: {
+    marginBottom: 24,
+  },
+  progressBarLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#0066FF',
+    borderRadius: 4,
+  },
+  progressBarText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  
+  // Timeline
   timelineContainer: {
     marginBottom: 24,
   },
@@ -405,12 +514,22 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
   },
+  lateStopMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   upcomingStopMarker: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: '#E0E0E0',
   },
+  
+  // Stop Info Cards
   stopInfoCard: {
     flex: 1,
     flexDirection: 'row',
@@ -440,10 +559,14 @@ const styles = StyleSheet.create({
   expectedTime: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 2,
   },
+  // Removed passengerCount style
   stopStatusContainer: {
     alignItems: 'flex-end',
   },
+  
+  // Status Badges
   onTimeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -477,12 +600,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 8,
   },
   nextStopText: {
     fontSize: 12,
     color: '#0066FF',
     fontWeight: '500',
   },
+  
+  // Action Button
+  actionButton: {
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  
+  // Time Display
   actualTimeOnTime: {
     fontSize: 14,
     color: '#22C55E',
@@ -495,6 +634,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'right',
   },
+  departureTime: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    textAlign: 'right',
+  },
   notVisitedText: {
     fontSize: 16,
     fontWeight: '500',
@@ -505,6 +650,8 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
+  
+  // Summary
   summarySeparator: {
     height: 1,
     backgroundColor: '#EEEEEE',
@@ -514,7 +661,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   summaryItem: {
     alignItems: 'center',
@@ -532,5 +679,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#22C55E',
+  },
+  
+  // Additional Stats
+  additionalStatsContainer: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statValueRed: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FF3B30',
   },
 });

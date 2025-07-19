@@ -1,5 +1,5 @@
 import FingerprintModal from '@/components/Login/FingerprintModel';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -40,12 +40,13 @@ export default function LoginScreen() {
       return;
     }
     setIsLoading(true);
+    
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Access Denied', 'Invalid credentials or not a Conductor.', [{ text: 'OK' }]);
+        Alert.alert('Access Denied', result.error || 'Invalid credentials or not a Conductor.', [{ text: 'OK' }]);
       }
     } catch (error) {
       Alert.alert('Error', 'An error occurred during login. Please try again.');
@@ -73,14 +74,15 @@ export default function LoginScreen() {
       return;
     }
     
-    setShowFingerprint(true); // This will open your modal
+    setShowFingerprint(true); 
   };
 
   const handleFingerprintSuccess = async () => {
     setShowFingerprint(false);
     setIsLoading(true);
     try {
-      // Try to restore user/token from AsyncStorage (if previously logged in)
+      // Try to restore user data from AsyncStorage
+      
       const userDataStr = await AsyncStorage.getItem('user');
       const token = await AsyncStorage.getItem('authToken');
       if (userDataStr && token) {
@@ -116,7 +118,7 @@ export default function LoginScreen() {
               <Ionicons name="bus" size={40} color="white" />
             </View>
             <Text style={styles.appName}>Busmate LK</Text>
-            <Text style={styles.tagline}>Conductor Mobile App</Text>
+            {/* <Text style={styles.tagline}>Conductor Mobile App</Text> */}
             <View style={styles.roleIndicator}>
               <Ionicons name="person-circle" size={16} color="#0066FF" />
               <Text style={styles.roleText}>Conductor Access Only</Text>

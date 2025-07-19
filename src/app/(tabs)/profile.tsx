@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
@@ -41,7 +41,7 @@ export default function ProfileScreen() {
 
   // Use auth context data with fallbacks
   const userInfo = {
-    fullName: user?.name || "Conductor Name",
+    fullName: user?.fullName || user?.name || "Conductor Name",
     conductorId: user?.employeeId || "CON-2024-001",
     email: user?.email || "conductor@busmate.lk",
     contactNumber: user?.contactNumber || "+94 77 123 4567",
@@ -80,7 +80,7 @@ export default function ProfileScreen() {
           {/* Profile Picture */}
           <View style={styles.profileImageContainer}>
             <Image 
-              source={require('@/assets/images/profile-pic.jpg')} 
+              source={require('@/assets/images/profilePic.jpg')} 
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.cameraButton}>
@@ -174,43 +174,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={24} color="#999" />
           </TouchableOpacity>
 
-          {/* Conductor Settings */}
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              Alert.alert('Conductor Settings', 'Configure your conductor preferences');
-            }}
-          >
-            <View style={styles.menuLeft}>
-              <View style={styles.iconContainer}>
-                <Ionicons name="settings" size={20} color="#666" />
-              </View>
-              <View>
-                <Text style={styles.menuTitle}>Conductor Settings</Text>
-                <Text style={styles.menuSubtitle}>App preferences and configuration</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#999" />
-          </TouchableOpacity>
-
-          {/* Help & Support */}
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              Alert.alert('Help & Support', 'Contact support at conductor-support@busmate.lk');
-            }}
-          >
-            <View style={styles.menuLeft}>
-              <View style={styles.iconContainer}>
-                <Ionicons name="help-circle" size={20} color="#666" />
-              </View>
-              <View>
-                <Text style={styles.menuTitle}>Help & Support</Text>
-                <Text style={styles.menuSubtitle}>Get help with conductor app</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#999" />
-          </TouchableOpacity>
+          
 
           {/* Sign Out */}
           <TouchableOpacity

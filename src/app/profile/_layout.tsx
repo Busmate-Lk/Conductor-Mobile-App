@@ -28,7 +28,7 @@ export default function ProfileLayout() {
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#0066FF', // Blue header that matches your app's theme
+          backgroundColor: '#0066FF', 
         },
         headerTintColor: '#fff',
         headerTitleStyle: {
@@ -62,41 +62,7 @@ export default function ProfileLayout() {
         }}
       />
       
-      {/* Settings Screen */}
-      <Stack.Screen 
-        name="settings" 
-        options={{
-          title: "Settings",
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: '600',
-          },
-        }}
-      />
-      
-      {/* Preferences Screen */}
-      <Stack.Screen 
-        name="preferences" 
-        options={{
-          title: "Preferences",
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: '600',
-          },
-        }}
-      />
-      
-      {/* Support Screen */}
-      <Stack.Screen 
-        name="support" 
-        options={{
-          title: "Help & Support",
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: '600',
-          },
-        }}
-      />
+    
     </Stack>
   );
 }

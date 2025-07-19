@@ -1,40 +1,103 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  TextInput,
-  SafeAreaView, 
-  StatusBar,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { useEmployeeProfile } from '@/hooks/employee/useEmployeeProfile';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function EditProfileScreen() {
-  const [userInfo, setUserInfo] = useState({
-    fullName: "Kasun Perera",
-    conductorId: "CON-2024-001",
-    email: "kasun.perera@gmail.com",
-    contactNumber: "+94 77 123 4567",
-    nationalId: "199512345678",
-    address: "No. 123, Main Street, Colombo 07, Sri Lanka"
+  const { user } = useAuth();
+  const { updateProfile, isLoading, error, clearError } = useEmployeeProfile();
+  
+  const [formData, setFormData] = useState({
+    fullName: '',
+    contactNumber: '',
   });
+  
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
-  const [passwordSectionOpen, setPasswordSectionOpen] = useState(false);
+  // Initialize form data with user data
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        fullName: user.fullName || user.name || '',
+        contactNumber: user.contactNumber || '',
+      });
+    }
+  }, [user]);
 
-  const handleSaveChanges = () => {
-    // Save profile changes logic here
-    console.log("Saving profile changes:", userInfo);
-    router.back();
+  // Clear errors when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      clearError();
+    };
+  }, [clearError]);
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    
+    if (!formData.fullName.trim()) {
+      errors.fullName = 'Full name is required';
+    } else if (formData.fullName.trim().length < 2) {
+      errors.fullName = 'Full name must be at least 2 characters';
+    }
+    
+    if (!formData.contactNumber.trim()) {
+      errors.contactNumber = 'Contact number is required';
+    } else if (!/^0[0-9]{9}$/.test(formData.contactNumber.trim())) {
+      errors.contactNumber = 'Please enter a valid Sri Lankan phone number (0XXXXXXXXX)';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveChanges = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      const result = await updateProfile({
+        fullName: formData.fullName.trim(),
+        phoneNumber: formData.contactNumber.trim(),
+      });
+      
+      if (result && result.success) {
+        Alert.alert(
+          'Success', 
+          'Profile updated successfully!',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert('Error', result?.error || 'Failed to update profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setUserInfo(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear validation error when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
   return (
@@ -58,7 +121,7 @@ export default function EditProfileScreen() {
           {/* Profile Picture */}
           <View style={styles.profileImageContainer}>
             <Image 
-              source={require('@/assets/images/profile-pic.jpg')} 
+              source={require('@/assets/images/profilePic.jpg')} 
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.cameraButton}>
@@ -68,12 +131,15 @@ export default function EditProfileScreen() {
           
           {/* Full Name */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Full Name</Text>
+            <Text style={styles.inputLabel}>Conductor Name</Text>
             <TextInput
-              style={styles.input}
-              value={userInfo.fullName}
+              style={[styles.input, validationErrors.fullName && styles.inputError]}
+              value={formData.fullName}
               onChangeText={(text) => handleInputChange('fullName', text)}
             />
+            {validationErrors.fullName && (
+              <Text style={styles.validationError}>{validationErrors.fullName}</Text>
+            )}
           </View>
           
           {/* Conductor ID */}
@@ -81,7 +147,7 @@ export default function EditProfileScreen() {
             <Text style={styles.inputLabel}>Conductor ID</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={userInfo.conductorId}
+              value={user?.employeeId || ''}
               editable={false}
             />
           </View>
@@ -90,11 +156,9 @@ export default function EditProfileScreen() {
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput
-              style={styles.input}
-              value={userInfo.email}
-              onChangeText={(text) => handleInputChange('email', text)}
-              keyboardType="email-address"
-              autoCapitalize="none"
+               style={[styles.input, styles.disabledInput]}
+              value={user?.email || ''}
+              editable={false}
             />
           </View>
           
@@ -102,25 +166,49 @@ export default function EditProfileScreen() {
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>Contact Number</Text>
             <TextInput
-              style={styles.input}
-              value={userInfo.contactNumber}
+              style={[styles.input, validationErrors.contactNumber && styles.inputError]}
+              value={formData.contactNumber}
               onChangeText={(text) => handleInputChange('contactNumber', text)}
               keyboardType="phone-pad"
+              placeholder="0XXXXXXXXX"
+            />
+            {validationErrors.contactNumber && (
+              <Text style={styles.validationError}>{validationErrors.contactNumber}</Text>
+            )}
+          </View>
+          
+          {/* Assigned Bus */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Assigned Bus</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={user?.busId || 'Not Assigned'}
+              editable={false}
+            />
+          </View>
+          
+          {/* Assigned Route */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Assigned Route</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={user?.route || 'Not Assigned'}
+              editable={false}
             />
           </View>
           
           {/* National ID */}
-          <View style={styles.inputSection}>
+          {/* <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>NIC / National ID</Text>
             <TextInput
               style={styles.input}
               value={userInfo.nationalId}
               onChangeText={(text) => handleInputChange('nationalId', text)}
             />
-          </View>
+          </View> */}
           
           {/* Address */}
-          <View style={styles.inputSection}>
+          {/* <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>Address</Text>
             <TextInput
               style={[styles.input, styles.multilineInput]}
@@ -129,7 +217,7 @@ export default function EditProfileScreen() {
               multiline={true}
               numberOfLines={3}
             />
-          </View>
+          </View> */}
           
           {/* Change Password Section */}
           <TouchableOpacity 
@@ -146,9 +234,24 @@ export default function EditProfileScreen() {
           
           <View style={styles.separator} />
           
+          {/* Display API errors */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          
           {/* Save Changes Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+          <TouchableOpacity 
+            style={[styles.saveButton, isLoading && styles.disabledButton]} 
+            onPress={handleSaveChanges}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
           
           {/* Add bottom padding for scrolling */}
@@ -230,6 +333,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  inputError: {
+    borderColor: '#f44336',
+    borderWidth: 1,
+    backgroundColor: '#ffebee',
+  },
+  validationError: {
+    color: '#f44336',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
   disabledInput: {
     opacity: 0.7,
   },
@@ -262,9 +376,26 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 20,
   },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+    opacity: 0.7,
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+  },
   saveButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
+    marginBottom: 20,
   },
 });

@@ -1,18 +1,16 @@
-
+import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView, 
-  StatusBar,
-  Alert, 
-  TextInput
+import {
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 
 export default function NotifyPassengersScreen() {
   const [tripInfo, setTripInfo] = useState({

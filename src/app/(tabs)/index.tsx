@@ -1,20 +1,27 @@
 import QuickActions from '@/components/Home/QuickActions';
 import SummaryCard from '@/components/Home/SummaryCard';
-import React,{useEffect} from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, SafeAreaView } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { useEmployeeProfile } from '@/hooks/employee/useEmployeeProfile';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Alert, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function HomeScreen() {
-  const { user,fetchEmployeeDetails } = useAuth();
+  const { user } = useAuth();
+  const { fetchProfile, isLoading: profileLoading, error: profileError } = useEmployeeProfile();
 
-   useEffect(() => {
-    if (user && user.id && !user.employeeId) {
-      fetchEmployeeDetails();
+  useEffect(() => {
+    // Fetch employee details if user exists but doesn't have employee data
+    if (user?.id && !user.employeeId) {
+      fetchProfile().catch(error => {
+        console.error('Failed to fetch employee profile:', error);
+        // Optionally show user-friendly error
+        Alert.alert('Error', 'Failed to load profile data. Please try again.');
+      });
     }
-  }, [user?.id]);
+  }, [user?.id, user?.employeeId, fetchProfile]);
   
   const today = new Date().toLocaleDateString('en-LK', {
     weekday: 'long',
@@ -39,7 +46,14 @@ export default function HomeScreen() {
   };
   
   const getFirstName = () => {
-    return user?.name.split(' ')[0] || 'Conductor';
+    // Use fullName first, then fallback to username, then name
+    if (user?.fullName) {
+      return user.fullName.split(' ')[0];
+    }
+    if (user?.username) {
+      return user.username;
+    }
+    return user?.name?.split(' ')[0] || 'Conductor';
   };
   
   const quickActions = [
@@ -51,7 +65,7 @@ export default function HomeScreen() {
     {
       label: 'Notify Passengers',
       icon: 'notifications',
-      onPress: () => router.push('/Passenger_Notifications/notify_passengers'),
+      onPress: () => router.push('/Notification/notify_passengers'),
     },
     {
       label: 'Tickets',
@@ -113,7 +127,7 @@ export default function HomeScreen() {
             onPress={() => { router.push('/(tabs)/profile'); }}
           >
             <Image 
-              source={require('@/assets/images/profile-pic.jpg')} 
+              source={require('@/assets/images/profilePic.jpg')} 
               style={styles.profileImage}
             />
           </TouchableOpacity>
@@ -134,11 +148,36 @@ export default function HomeScreen() {
           <Text style={styles.dateText}>{today}</Text>
         </View>
 
+        {/* Profile Loading Indicator */}
+        {profileLoading && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Loading profile...</Text>
+          </View>
+        )}
+
+        {/* Profile Error */}
+        {profileError && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Profile Error</Text>
+            <Text style={styles.infoText}>{profileError}</Text>
+            <TouchableOpacity 
+              style={styles.shiftButton}
+              onPress={() => fetchProfile()}
+            >
+              <Text style={styles.buttonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Today's Shift Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Today's Shift</Text>
-          <Text style={styles.nameText}>Conductor: {user?.name}</Text>
-          <Text style={styles.infoText}>ID: {user?.employeeId || user?.id}</Text>
+          <Text style={styles.nameText}>
+            Conductor: {user?.fullName || user?.name || 'Loading...'}
+          </Text>
+          <Text style={styles.infoText}>
+            Employee ID: {user?.employeeId || user?.id || 'Loading...'}
+          </Text>
           <Text style={styles.infoText}>
             Date: {new Date().toLocaleDateString('en-LK', {
               month: 'long',

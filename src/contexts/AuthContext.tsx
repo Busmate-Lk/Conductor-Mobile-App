@@ -1,40 +1,25 @@
+import { authApi } from '@/services/api/auth';
+import { BiometricAuthResult, User } from '@/types/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: 'conductor'; // Only conductor role allowed
-  busId?: string;
-  route?: string;
-  contactNumber?: string;
-  employeeId?: string; // Add employee ID
-  fullName?: string;   // Add full name
-};
+import React, { createContext, useEffect, useState } from 'react';
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  saveUserData: (userData: User, accessToken?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  updateUser: (userData: User) => Promise<void>;
   isBiometricSupported: boolean;
   hasBiometricCredentials: boolean;
-   fetchEmployeeDetails: () => Promise<void>; // Add this function
+  authenticateWithBiometrics: () => Promise<BiometricAuthResult>;
+  // Keep the old method for backward compatibility
+  fetchEmployeeDetails: () => Promise<void>;
+  saveUserData: (userData: User, accessToken?: string) => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,11 +27,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const [hasBiometricCredentials, setHasBiometricCredentials] = useState(false);
 
-  // Load user data and check biometric support on app start
+  // Initialize auth on component mount
   useEffect(() => {
-    loadUserData();
-    checkBiometricSupport();
+    initializeAuth();
   }, []);
+
+  const initializeAuth = async () => {
+    try {
+      await Promise.all([
+        loadUserData(),
+        checkBiometricSupport(),
+      ]);
+    } catch (error) {
+      console.error('Failed to initialize auth:', error);
+    }
+  };
 
   const checkBiometricSupport = async () => {
     try {
@@ -66,8 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUserData = async () => {
     try {
       setIsLoading(true);
-      const userData = await AsyncStorage.getItem('user');
-      const authToken = await AsyncStorage.getItem('authToken');
+      const [userData, authToken] = await Promise.all([
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('authToken'),
+      ]);
       
       if (userData && authToken) {
         const parsedUser = JSON.parse(userData);
@@ -76,38 +73,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(parsedUser);
         } else {
           // Clear invalid role data
-          await AsyncStorage.removeItem('user');
-          await AsyncStorage.removeItem('authToken');
+          await clearAuthData();
         }
       }
     } catch (error) {
       console.error('Failed to load user data:', error);
+      await clearAuthData();
     } finally {
       setIsLoading(false);
     }
   };
 
-const login = async (email: string, password: string): Promise<boolean> => {
+  const clearAuthData = async () => {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem('user'),
+        AsyncStorage.removeItem('authToken'),
+      ]);
+      setUser(null);
+    } catch (error) {
+      console.error('Failed to clear auth data:', error);
+    }
+  };
+
+const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
   try {
     setIsLoading(true);
-    const response = await fetch('http://192.168.17.101:8080/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await response.json();
-    console.log('Login response:', data);
+    const data = await authApi.login({ email, password });
     
     // Only allow login if app_role is 'Conductor' and access_token exists
-    if (
-      response.ok &&
-      data &&
-      data.access_token &&
-      data.user &&
-      data.user.app_role === 'Conductor'
-    ) {
+    if (data.access_token && data.user?.app_role === 'Conductor') {
       // Map backend user to frontend User type
       const userData: User = {
         id: data.user.id,
@@ -122,45 +117,70 @@ const login = async (email: string, password: string): Promise<boolean> => {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       await AsyncStorage.setItem('authToken', data.access_token);
       setUser(userData);
-      return true;
+      return { success: true };
     }
-    return false; // Invalid credentials, missing token/user, or not a conductor
+    return { success: false, error: 'Invalid credentials or unauthorized role' };
   } catch (error) {
     console.error('Login failed:', error);
-    return false;
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Login failed' 
+    };
   } finally {
     setIsLoading(false);
   }
 };
 
 
-  const saveUserData = async (userData: User, accessToken?: string): Promise<void> => {
+  const updateUser = async (userData: User): Promise<void> => {
     try {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      if (accessToken) {
-        await AsyncStorage.setItem('authToken', accessToken);
-      }
       setUser(userData);
     } catch (error) {
-      console.error('Failed to save user data:', error);
+      console.error('Failed to update user:', error);
       throw error;
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('authToken');
-      setUser(null);
+      // Call logout API if needed
+      // await authApi.logout();
+      await clearAuthData();
     } catch (error) {
       console.error('Logout failed:', error);
+      // Even if API call fails, clear local data
+      await clearAuthData();
     }
   };
 
-  const isAuthenticated = !!user && user.role === 'conductor'; 
-  
+  const authenticateWithBiometrics = async (): Promise<BiometricAuthResult> => {
+    try {
+      if (!isBiometricSupported) {
+        return { success: false, error: 'Biometric authentication not supported' };
+      }
 
- const fetchEmployeeDetails = async (): Promise<void> => {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate with biometrics',
+        fallbackLabel: 'Use password',
+        cancelLabel: 'Cancel',
+      });
+
+      if (result.success) {
+        return { success: true };
+      } else {
+        return { success: false, error: 'Biometric authentication failed' };
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Biometric authentication error' 
+      };
+    }
+  };
+
+  // Keep old fetchEmployeeDetails for backward compatibility 
+  const fetchEmployeeDetails = async (): Promise<void> => {
     try {
       const authToken = await AsyncStorage.getItem('authToken');
       const userData = await AsyncStorage.getItem('user');
@@ -172,16 +192,13 @@ const login = async (email: string, password: string): Promise<boolean> => {
 
       const parsedUser = JSON.parse(userData);
       
-      // Call your employee details API
-      const response = await fetch(`http://10.22.162.220:8080/api/conductor/profile/${parsedUser.id}`, {
+      const response = await fetch(`http://10.22.162.220:8080/api/conductor/profile?userId=${parsedUser.id}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
       });
-      
-
 
       if (response.ok) {
         const employeeData = await response.json();
@@ -190,12 +207,13 @@ const login = async (email: string, password: string): Promise<boolean> => {
         // Update user with employee details
         const updatedUser: User = {
           ...parsedUser,
-          employeeId: employeeData.employeeId || employeeData.employee_id,
-          fullName: employeeData.fullName || employeeData.name,
-          name: employeeData.fullName || employeeData.name || parsedUser.name,
-          busId: employeeData.busId || parsedUser.busId,
-          route: employeeData.route || parsedUser.route,
-          contactNumber: employeeData.contactNumber || employeeData.phone || parsedUser.contactNumber,
+          employeeId: employeeData.employee_id,
+          fullName: employeeData.fullName,
+          name: employeeData.fullName || parsedUser.name,
+          username: employeeData.username, 
+          busId: employeeData.assign_operator_id,
+          route: parsedUser.route,
+          contactNumber: employeeData.phoneNumber,
         };
         
         // Save updated user data
@@ -209,6 +227,26 @@ const login = async (email: string, password: string): Promise<boolean> => {
     }
   };
 
+  // Backward compatibility method (keep for existing code)
+  const saveUserData = async (userData: User, accessToken?: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      if (accessToken) {
+        await AsyncStorage.setItem('authToken', accessToken);
+      }
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to save user data:', error);
+      throw error;
+    }
+  };
+
+  // Initialize auth on component mount
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+
+  const isAuthenticated = !!user && user.role === 'conductor';
 
   return (
     <AuthContext.Provider
@@ -217,11 +255,13 @@ const login = async (email: string, password: string): Promise<boolean> => {
         isLoading,
         isAuthenticated,
         login,
-        saveUserData,
         logout,
+        updateUser,
         isBiometricSupported,
         hasBiometricCredentials,
-        fetchEmployeeDetails, // Add this
+        authenticateWithBiometrics,
+        fetchEmployeeDetails,
+        saveUserData,
       }}
     >
       {children}

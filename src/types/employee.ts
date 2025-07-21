@@ -18,6 +18,7 @@ export interface UpdateProfileRequest{
     fullName?: string;
     phoneNumber?: string;
     
+    
 }
 // Interface for the conductor profile update response
 export interface UpdateProfileResponse {

@@ -34,12 +34,6 @@
         {
           "cameraPermission": "Allow BusMate to access your camera to scan QR codes."
         }
-      ],
-      [
-        "expo-barcode-scanner",
-        {
-          "cameraPermission": "Allow BusMate to access your camera to scan QR codes."
-        }
       ]
     ],
     "experiments": {

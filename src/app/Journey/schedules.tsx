@@ -59,7 +59,7 @@ export default function SchedulesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
       
      
       

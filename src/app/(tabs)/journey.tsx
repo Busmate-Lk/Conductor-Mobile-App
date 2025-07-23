@@ -1,18 +1,35 @@
-import React, { use } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, StatusBar,useColorScheme } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React from 'react';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function JourneyScreen() {
+  const colorScheme = useColorScheme();
+  
+  // Dummy stops data
+  const stopsList = [
+    { id: 1, name: 'Matara', km: 0 },
+    { id: 2, name: 'Weligama', km: 15 },
+    { id: 3, name: 'Mirissa', km: 25 },
+    { id: 4, name: 'Galle', km: 45 },
+    { id: 5, name: 'Hikkaduwa', km: 65 },
+    { id: 6, name: 'Ambalangoda', km: 75 },
+    { id: 7, name: 'Bentota', km: 90 },
+    { id: 8, name: 'Kalutara', km: 110 },
+    { id: 9, name: 'Panadura', km: 125 },
+    { id: 10, name: 'Moratuwa', km: 140 },
+    { id: 11, name: 'Dehiwala', km: 150 },
+    { id: 12, name: 'Colombo', km: 160 }
+  ];
 
-  const colorScheme =useColorScheme();
+  // Simple static data for next stop
+  const startStop = stopsList[0]; // Matara
+  const endStop = stopsList[stopsList.length - 1]; // Colombo
+  const nextStop = stopsList[4]; // Hikkaduwa as next stop
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Adjust status bar based on color scheme */}
-      <StatusBar 
-        barStyle={colorScheme === 'dark' ? "light-content" : "dark-content"} 
-        backgroundColor={colorScheme === 'dark' ? "black" : "white"}
-      />
+       <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -32,7 +49,7 @@ export default function JourneyScreen() {
         <View style={styles.journeyCard}>
           {/* Route Information */}
           <View style={styles.routeContainer}>
-            <Text style={styles.routeText}>Colombo → Kandy</Text>
+            <Text style={styles.routeText}>{startStop.name} → {endStop.name}</Text>
             
             <View style={styles.busNumberContainer}>
               <Text style={styles.busNumberText}>NC-1234</Text>
@@ -47,7 +64,7 @@ export default function JourneyScreen() {
             </View>
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Arrival</Text>
-              <Text style={styles.timeValue}>09:45 AM</Text>
+              <Text style={styles.timeValue}>10:30 AM</Text>
             </View>
           </View>
           
@@ -56,6 +73,20 @@ export default function JourneyScreen() {
             <Text style={styles.dateText}>Today, Dec 16, 2024</Text>
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>Ongoing</Text>
+            </View>
+          </View>
+          
+          {/* Journey Progress */}
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressLabel}>
+              Journey Progress: 28%
+            </Text>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: '28%' }]} />
+            </View>
+            <View style={styles.progressInfo}>
+              <Text style={styles.progressText}>45 km</Text>
+              <Text style={styles.progressText}>160 km</Text>
             </View>
           </View>
           
@@ -70,56 +101,6 @@ export default function JourneyScreen() {
           </View>
         </View>
         
-        {/* Passed Stops */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Passed Stops</Text>
-          
-          {/* Colombo Fort Stop */}
-          <View style={styles.stopItem}>
-            <View style={styles.stopLeftContainer}>
-              <View style={[styles.stopIndicator, styles.onTimeIndicator]} />
-              <View style={styles.stopDetails}>
-                <Text style={styles.stopName}>Colombo Fort</Text>
-                <Text style={styles.expectedTime}>Expected: 06:30 AM</Text>
-              </View>
-            </View>
-            <View style={styles.stopRightContainer}>
-              <Text style={[styles.actualTime, styles.onTimeText]}>06:28 AM</Text>
-              <Text style={styles.timeDifference}>2 min early</Text>
-            </View>
-          </View>
-          
-          {/* Kelaniya Stop */}
-          <View style={styles.stopItem}>
-            <View style={styles.stopLeftContainer}>
-              <View style={[styles.stopIndicator, styles.slightlyLateIndicator]} />
-              <View style={styles.stopDetails}>
-                <Text style={styles.stopName}>Kelaniya</Text>
-                <Text style={styles.expectedTime}>Expected: 06:50 AM</Text>
-              </View>
-            </View>
-            <View style={styles.stopRightContainer}>
-              <Text style={[styles.actualTime, styles.slightlyLateText]}>06:52 AM</Text>
-              <Text style={styles.timeDifference}>2 min late</Text>
-            </View>
-          </View>
-          
-          {/* Gampaha Stop */}
-          <View style={styles.stopItem}>
-            <View style={styles.stopLeftContainer}>
-              <View style={[styles.stopIndicator, styles.lateIndicator]} />
-              <View style={styles.stopDetails}>
-                <Text style={styles.stopName}>Gampaha</Text>
-                <Text style={styles.expectedTime}>Expected: 07:15 AM</Text>
-              </View>
-            </View>
-            <View style={styles.stopRightContainer}>
-              <Text style={[styles.actualTime, styles.lateText]}>07:22 AM</Text>
-              <Text style={styles.timeDifference}>7 min late</Text>
-            </View>
-          </View>
-        </View>
-        
         {/* Next Stop */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Next Stop</Text>
@@ -129,12 +110,12 @@ export default function JourneyScreen() {
                 <Ionicons name="location" size={20} color="#FFFFFF" />
               </View>
               <View style={styles.nextStopDetails}>
-                <Text style={styles.nextStopName}>Veyangoda</Text>
-                <Text style={styles.expectedTime}>Expected: 07:45 AM</Text>
+                <Text style={styles.nextStopName}>{nextStop.name}</Text>
+                <Text style={styles.expectedTime}>Expected: 08:15 AM</Text>
               </View>
             </View>
             <View style={styles.nextStopRight}>
-              <Text style={styles.remainingTime}>12 min</Text>
+              <Text style={styles.remainingTime}>30 min</Text>
               <Text style={styles.remainingLabel}>remaining</Text>
             </View>
           </View>
@@ -173,7 +154,7 @@ export default function JourneyScreen() {
               <View style={styles.summaryIconContainer}>
                 <Ionicons name="people" size={20} color="#0066FF" />
               </View>
-              <Text style={styles.summaryValue}>42</Text>
+              <Text style={styles.summaryValue}>54</Text>
               <Text style={styles.summaryLabel}>Total Passengers</Text>
             </View>
             
@@ -182,7 +163,7 @@ export default function JourneyScreen() {
               <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
                 <Ionicons name="receipt-outline" size={20} color="#00CC66" />
               </View>
-              <Text style={styles.summaryValue}>45</Text>
+              <Text style={styles.summaryValue}>65</Text>
               <Text style={styles.summaryLabel}>Tickets Issued</Text>
             </View>
             
@@ -200,7 +181,7 @@ export default function JourneyScreen() {
               <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
                 <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
               </View>
-              <Text style={styles.summaryValue}>Rs. 1,580</Text>
+              <Text style={styles.summaryValue}>Rs. 1,890</Text>
               <Text style={styles.summaryLabel}>Cash Revenue</Text>
             </View>
           </View>
@@ -208,7 +189,7 @@ export default function JourneyScreen() {
           {/* Trip Duration */}
           <View style={styles.durationContainer}>
             <Text style={styles.durationLabel}>Trip Duration</Text>
-            <Text style={styles.durationValue}>4h 30m</Text>
+            <Text style={styles.durationValue}>1h 45m</Text>
           </View>
         </View>
         
@@ -229,29 +210,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F7',
   },
   header: {
-    marginTop: StatusBar.currentHeight,
+    // REMOVED: marginTop: StatusBar.currentHeight, ← This was causing the gap
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: '#0066FF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    
-    
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   backButton: {
-    marginRight: 12,
+    padding: 4,
+    marginTop: 20, // Added margin to match other headers
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#FFFFFF',
+    marginTop: 20, // Added margin to match other headers
   },
   journeyCard: {
     backgroundColor: '#FFFFFF',
@@ -363,65 +342,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
   },
-  stopItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  stopLeftContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  stopIndicator: {
-    width: 4,
-    height: '100%',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  onTimeIndicator: {
-    backgroundColor: '#33CC33',
-  },
-  slightlyLateIndicator: {
-    backgroundColor: '#FF9500',
-  },
-  lateIndicator: {
-    backgroundColor: '#FF3B30',
-  },
-  stopDetails: {
-    flex: 1,
-  },
-  stopName: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
   expectedTime: {
     fontSize: 12,
     color: '#666',
-  },
-  stopRightContainer: {
-    alignItems: 'flex-end',
-  },
-  actualTime: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  onTimeText: {
-    color: '#33CC33',
-  },
-  slightlyLateText: {
-    color: '#FF9500',
-  },
-  lateText: {
-    color: '#FF3B30',
-  },
-  timeDifference: {
-    fontSize: 11,
-    color: '#999',
   },
   nextStopContainer: {
     flexDirection: 'row',
@@ -541,5 +464,35 @@ const styles = StyleSheet.create({
   durationValue: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  progressContainer: {
+    marginVertical: 16,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#0066FF',
+    borderRadius: 3,
+  },
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#666',
   },
 });

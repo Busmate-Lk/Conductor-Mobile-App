@@ -66,6 +66,7 @@ export default function TicketLayout() {
       <Stack.Screen 
         name="ticketPrintingpage" 
         options={{
+          headerShown: false, // Hide header for printing page
           title: "Printing Ticket",
           // presentation: 'card',
         }}

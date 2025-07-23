@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { Alert, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const { fetchProfile, isLoading: profileLoading, error: profileError } = useEmployeeProfile();
@@ -102,7 +103,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#f8f9fa" />
+       <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
       
       {/* Fixed Header */}
       <View style={[styles.fixedHeader, { paddingTop: Math.max(insets.top, 16) }]}>

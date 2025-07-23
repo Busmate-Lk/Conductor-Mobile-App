@@ -1,8 +1,15 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthGuard from '@/components/Login/AuthGuard';
+import { StatusBar } from 'react-native';
+import { useEffect } from 'react';
 
 export default function TabLayout() {
+  // Set global status bar configuration for tab screens
+  useEffect(() => {
+    StatusBar.setBarStyle('light-content', true);
+    StatusBar.setBackgroundColor('#0066FF', true);
+  }, []);
   return (
     <AuthGuard>
       <Tabs

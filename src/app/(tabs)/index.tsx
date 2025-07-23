@@ -205,9 +205,9 @@ export default function HomeScreen() {
         {/* Today's Assignment */}
         <Text style={styles.sectionTitle}>Today's Assignment</Text>
         <View style={styles.assignmentCard}>
-          <Text style={styles.routeText}>Route: {user?.route || 'Colombo - Kandy'}</Text>
-          <Text style={styles.busIdText}>Bus ID: {user?.busId || 'NB-2845'}</Text>
-          <Text style={styles.departureText}>Departure: 9:30 AM</Text>
+          <Text style={styles.routeText}>Route: {user?.route || 'Matara - colombo'}</Text>
+          <Text style={styles.busIdText}>Bus ID: {user?.busId || 'NC-1234'}</Text>
+          <Text style={styles.departureText}>Departure: 6:30 AM</Text>
           
           <TouchableOpacity 
             style={styles.viewDetailsButton}

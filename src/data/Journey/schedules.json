@@ -38,11 +38,11 @@
   {
     "id": "4",
     "from": "Matara",
-    "to": "Matara",
-    "busNumber": "ND4578",
-    "startTime": "09:00 PM",
-    "endTime": "10:30 PM",
-    "date": "07/19/2025",
+    "to": "Colombo",
+    "busNumber": "ND1234",
+    "startTime": "6:30 AM",
+    "endTime": "10:30 AM",
+    "date": "07/24/2025",
     "seatsOccupied": 15,
     "totalSeats": 50,
     "status": "ongoing"

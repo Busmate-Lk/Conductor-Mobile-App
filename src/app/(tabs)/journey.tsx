@@ -26,6 +26,11 @@ export default function JourneyScreen() {
   const startStop = stopsList[0]; // Matara
   const endStop = stopsList[stopsList.length - 1]; // Colombo
   const nextStop = stopsList[4]; // Hikkaduwa as next stop
+  
+  // Time information based on stops data
+  const departureTime = "06:30 AM"; // Start time from Matara
+  const arrivalTime = "10:30 AM"; // End time at Colombo
+  const nextStopTime = "08:15 AM"; // Expected time for next stop
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Adjust status bar based on color scheme */}
@@ -60,17 +65,25 @@ export default function JourneyScreen() {
           <View style={styles.timeContainer}>
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Departure</Text>
-              <Text style={styles.timeValue}>06:30 AM</Text>
+              <Text style={styles.timeValue}>{departureTime}</Text>
+              <Text style={styles.expectedTime}>{startStop.name}</Text>
             </View>
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Arrival</Text>
-              <Text style={styles.timeValue}>10:30 AM</Text>
+              <Text style={styles.timeValue}>{arrivalTime}</Text>
+              <Text style={styles.expectedTime}>{endStop.name}</Text>
             </View>
           </View>
           
           {/* Date and Status */}
           <View style={styles.dateStatusContainer}>
-            <Text style={styles.dateText}>Today, Dec 16, 2024</Text>
+            <Text style={styles.dateText}>
+              {`Today, ${new Date().toLocaleDateString('en-US', {
+              month: 'short',
+              day: '2-digit',
+              year: 'numeric'
+              })}`}
+            </Text>
             <View style={styles.statusBadge}>
               <Text style={styles.statusText}>Ongoing</Text>
             </View>
@@ -79,14 +92,14 @@ export default function JourneyScreen() {
           {/* Journey Progress */}
           <View style={styles.progressContainer}>
             <Text style={styles.progressLabel}>
-              Journey Progress: 28%
+              Journey Progress: {Math.round((nextStop.km / endStop.km) * 100)}%
             </Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '28%' }]} />
+              <View style={[styles.progressFill, { width: `${Math.round((nextStop.km / endStop.km) * 100)}%` }]} />
             </View>
             <View style={styles.progressInfo}>
-              <Text style={styles.progressText}>45 km</Text>
-              <Text style={styles.progressText}>160 km</Text>
+              <Text style={styles.progressText}>{nextStop.km} km</Text>
+              <Text style={styles.progressText}>{endStop.km} km</Text>
             </View>
           </View>
           
@@ -111,7 +124,8 @@ export default function JourneyScreen() {
               </View>
               <View style={styles.nextStopDetails}>
                 <Text style={styles.nextStopName}>{nextStop.name}</Text>
-                <Text style={styles.expectedTime}>Expected: 08:15 AM</Text>
+                <Text style={styles.expectedTime}>Expected: {nextStopTime}</Text>
+                <Text style={styles.expectedTime}>{nextStop.km} km from start</Text>
               </View>
             </View>
             <View style={styles.nextStopRight}>
@@ -189,7 +203,25 @@ export default function JourneyScreen() {
           {/* Trip Duration */}
           <View style={styles.durationContainer}>
             <Text style={styles.durationLabel}>Trip Duration</Text>
-            <Text style={styles.durationValue}>1h 45m</Text>
+            <Text style={styles.durationValue}>
+              {(() => {
+              // Parse times in "hh:mm AM/PM" format
+              const parseTime = (timeStr: string) => {
+                const [time, modifier] = timeStr.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+                if (modifier === 'PM' && hours !== 12) hours += 12;
+                if (modifier === 'AM' && hours === 12) hours = 0;
+                return hours * 60 + minutes;
+              };
+              const depMins = parseTime(departureTime);
+              const arrMins = parseTime(arrivalTime);
+              let diff = arrMins - depMins;
+              if (diff < 0) diff += 24 * 60; // handle overnight trips
+              const h = Math.floor(diff / 60);
+              const m = diff % 60;
+              return `${h}h ${m}m`;
+              })()}
+            </Text>
           </View>
         </View>
         

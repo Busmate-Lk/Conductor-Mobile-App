@@ -1,20 +1,21 @@
+import { useTicket } from '@/contexts/TicketContext';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
+  Animated,
   SafeAreaView,
   StatusBar,
-  Image,
-  Animated,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 
 export default function TicketPrintingScreen() {
   const [progress, setProgress] = useState(0);
+  const [isPrintingComplete, setIsPrintingComplete] = useState(false);
   const progressAnimation = new Animated.Value(0);
+  const { ticketData } = useTicket();
   
   // Simulate printing progress
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function TicketPrintingScreen() {
         const newProgress = prev + 0.02;
         if (newProgress >= 1) {
           clearInterval(interval);
+          setIsPrintingComplete(true);
           // Navigate to confirmation screen after completion
           setTimeout(() => {
             router.replace('/Ticket/ticketIssuePage');
@@ -50,12 +52,15 @@ export default function TicketPrintingScreen() {
     outputRange: ['0%', '100%'],
   });
 
+  // Calculate progress bar color based on completion
+  const progressBarColor = progress >= 1 ? '#00FF00' : '#FFFFFF'; // Green when 100%, white otherwise
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
       
       {/* Upper shadow */}
-      <View style={styles.upperShadow} />
+      {/* <View style={styles.upperShadow} /> */}
       
       {/* Content Container */}
       <View style={styles.contentContainer}>
@@ -66,35 +71,43 @@ export default function TicketPrintingScreen() {
         </View> */}
         
         {/* QR Code */}
-        <View style={styles.qrContainer}>
+        {/* <View style={styles.qrContainer}>
           <Image
             source={require('@/assets/images/qr-placeholder.svg')}
             style={styles.qrImage}
             resizeMode="contain"
           />
-        </View>
+        </View> */}
         
         {/* Printing Message */}
-        <Text style={styles.printingText}>Printing Ticket...</Text>
-        <Text style={styles.waitText}>Please wait</Text>
+        <Text style={styles.printingText}>
+          {isPrintingComplete ? 'Ticket Generated!' : 'Printing Ticket...'}
+        </Text>
+        <Text style={styles.waitText}>
+          {isPrintingComplete ? 'Ready for collection' : 'Please wait'}
+        </Text>
+        
+        {/* Route Information */}
+        {ticketData && (
+          <View style={styles.routeInfo}>
+            <Text style={styles.routeText}>
+              {ticketData.from} → {ticketData.to}
+            </Text>
+            <Text style={styles.fareText}>{ticketData.fare}</Text>
+          </View>
+        )}
+        
+        {/* Progress Percentage */}
+        <Text style={[styles.percentageText, isPrintingComplete && styles.completedText]}>
+          {Math.round(progress * 100)}%
+        </Text>
         
         {/* Loading Spinner */}
         <ActivityIndicator size="large" color="#FFFFFF" style={styles.spinner} />
         
         {/* Progress Bar */}
         <View style={styles.progressBarContainer}>
-          <Animated.View style={[styles.progressBar, { width }]} />
-        </View>
-        
-        {/* Volume Control */}
-        <View style={styles.volumeContainer}>
-          <Ionicons name="volume-medium" size={24} color="rgba(255,255,255,0.7)" />
-          <View style={styles.volumeBars}>
-            <View style={[styles.volumeBar, styles.activeVolumeBar]} />
-            <View style={[styles.volumeBar, styles.activeVolumeBar]} />
-            <View style={[styles.volumeBar, styles.activeVolumeBar]} />
-            <View style={[styles.volumeBar, styles.inactiveVolumeBar]} />
-          </View>
+          <Animated.View style={[styles.progressBar, { width, backgroundColor: progressBarColor }]} />
         </View>
       </View>
     </SafeAreaView>
@@ -119,8 +132,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingBottom: 40,
+    paddingHorizontal: 40,
+    paddingVertical: 60,
   },
   ticketInfoContainer: {
     position: 'absolute',
@@ -138,65 +151,89 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   qrContainer: {
-    marginBottom: 60,
+    marginBottom: 40,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   qrImage: {
-    width: 100,
-    height: 100,
-    opacity: 0.5,
+    width: 120,
+    height: 120,
+    opacity: 0.8,
   },
   printingText: {
     color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 10,
-    letterSpacing: 1,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   waitText: {
     color: '#FFFFFF',
-    fontSize: 20,
-    opacity: 0.8,
-    marginBottom: 30,
+    fontSize: 18,
+    opacity: 0.9,
+    marginBottom: 25,
+    fontWeight: '400',
+  },
+  percentageText: {
+    color: '#FFFFFF',
+    fontSize: 52,
+    fontWeight: 'bold',
+    marginBottom: 25,
+    textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 4,
   },
   spinner: {
-    marginBottom: 24,
+    marginBottom: 30,
+    transform: [{ scale: 1.2 }],
   },
   progressBarContainer: {
     width: '100%',
-    height: 6,
+    height: 8,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 3,
-    marginBottom: 40,
+    borderRadius: 4,
+    marginBottom: 50,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 3,
+    borderRadius: 4,
   },
-  volumeContainer: {
-    flexDirection: 'row',
+  routeInfo: {
     alignItems: 'center',
-    marginTop: 30,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
   },
-  volumeBars: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 24,
-    marginLeft: 10,
+  routeText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 5,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
-  volumeBar: {
-    width: 4,
-    marginHorizontal: 2,
-    borderRadius: 1,
+  fareText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
   },
-  activeVolumeBar: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    height: '100%',
-  },
-  inactiveVolumeBar: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    height: '50%',
+  completedText: {
+    color: '#FFFFFF',
   },
 });

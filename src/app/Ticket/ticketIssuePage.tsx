@@ -1,32 +1,29 @@
+import { TicketDetails, useTicket } from '@/contexts/TicketContext';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import * as Print from 'expo-print';
+import { router } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
+  Alert,
   Image,
+  Platform,
+  SafeAreaView,
+  Share,
   StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-import { router } from 'expo-router';
-
-// Ticket interface
-interface TicketDetails {
-  id: string;
-  from: string;
-  to: string;
-  platform: string;
-  gate: string;
-  passengers: string;
-  fare: string;
-  issuedOn: string;
-  phoneNumber?: string;
-}
 
 export default function TicketConfirmationScreen() {
-  // Sample ticket data
-  const ticket: TicketDetails = {
+  const { ticketData } = useTicket();
+
+  // Use context data or fallback to sample data
+  const ticket: TicketDetails = ticketData || {
     id: 'TK-2024-001573',
     from: 'Colombo',
     to: 'Kandy',
@@ -36,6 +33,281 @@ export default function TicketConfirmationScreen() {
     fare: 'Rs.12.50',
     issuedOn: 'Dec 15, 2024 - 2:35 PM',
     phoneNumber: '+94 77 123 4567'
+  };
+
+  // Generate HTML for PDF
+  const generateTicketHTML = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Bus Ticket - ${ticket.id}</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+          }
+          .ticket-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .ticket-header {
+            background: #0066FF;
+            color: white;
+            padding: 20px;
+            text-align: center;
+          }
+          .ticket-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+          }
+          .ticket-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+            margin: 5px 0 0 0;
+          }
+          .ticket-id {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 0 0 0;
+            letter-spacing: 1px;
+          }
+          .ticket-body {
+            padding: 20px;
+          }
+          .journey-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          .journey-location {
+            flex: 1;
+          }
+          .journey-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+          .journey-city {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+          }
+          .journey-detail {
+            color: #666;
+            font-size: 13px;
+          }
+          .journey-arrow {
+            flex: 0 0 60px;
+            font-size: 20px;
+            color: #0066FF;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+          }
+          .detail-label {
+            color: #666;
+          }
+          .detail-value {
+            font-weight: 600;
+            color: #333;
+          }
+          .qr-section {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #ddd;
+          }
+          .qr-placeholder {
+            width: 100px;
+            height: 100px;
+            background: #f0f0f0;
+            margin: 0 auto 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+          }
+          .footer {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="ticket-container">
+          <div class="ticket-header">
+            <h1 class="ticket-title">🎫 Digital Bus Ticket</h1>
+            <p class="ticket-subtitle">Valid for single journey</p>
+            <p class="ticket-id">ID: ${ticket.id}</p>
+          </div>
+          
+          <div class="ticket-body">
+            <div class="journey-section">
+              <div class="journey-location">
+                <div class="journey-label">From</div>
+                <div class="journey-city">${ticket.from}</div>
+                <div class="journey-detail">${ticket.platform}</div>
+              </div>
+              <div class="journey-arrow">🚌→</div>
+              <div class="journey-location">
+                <div class="journey-label">To</div>
+                <div class="journey-city">${ticket.to}</div>
+                <div class="journey-detail">${ticket.gate}</div>
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Passengers</span>
+              <span class="detail-value">${ticket.passengers}</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Total Fare</span>
+              <span class="detail-value">${ticket.fare}</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Issued On</span>
+              <span class="detail-value">${ticket.issuedOn}</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Phone Number</span>
+              <span class="detail-value">${ticket.phoneNumber || 'Not provided'}</span>
+            </div>
+            
+            <div class="qr-section">
+              <div class="qr-placeholder">
+                QR CODE<br/>
+                ${ticket.id}
+              </div>
+              <p>Scan QR Code for Validation</p>
+            </div>
+            
+            <div class="footer">
+              Generated by Virtual Ticketing System<br>
+              Keep this ticket until the end of your journey
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  // Handle download ticket as PDF
+  const handleDownload = async () => {
+    try {
+      // Show loading state
+      Alert.alert('Generating PDF...', 'Please wait while we create your ticket PDF');
+
+      // Generate PDF
+      const { uri } = await Print.printToFileAsync({
+        html: generateTicketHTML(),
+        base64: false,
+      });
+
+      // Create filename
+      const filename = `BusTicket_${ticket.id.replace(/-/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      if (Platform.OS === 'ios') {
+        // On iOS, directly share the PDF
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save Ticket PDF',
+          });
+        } else {
+          Alert.alert('Success', 'PDF generated successfully!');
+        }
+      } else {
+        // On Android, try to share directly first
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save or Share Ticket PDF',
+          });
+          
+          Alert.alert(
+            'PDF Ready!', 
+            'Your ticket PDF has been generated and is ready to share.',
+            [
+              { text: 'OK' }
+            ]
+          );
+        } else {
+          // Fallback: try to save to file system
+          try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            
+            if (status === 'granted') {
+              const downloadPath = `${FileSystem.documentDirectory}${filename}`;
+              await FileSystem.copyAsync({
+                from: uri,
+                to: downloadPath,
+              });
+
+              Alert.alert(
+                'Download Complete!',
+                `Ticket saved as: ${filename}`,
+                [
+                  { text: 'OK' }
+                ]
+              );
+            } else {
+              Alert.alert(
+                'PDF Generated!',
+                'Your ticket PDF has been created. Please use the share option to save or send it.',
+                [
+                  { text: 'OK' }
+                ]
+              );
+            }
+          } catch (saveError) {
+            console.log('Save error:', saveError);
+            Alert.alert(
+              'PDF Generated!',
+              'Your ticket PDF has been created successfully.',
+              [
+                { text: 'OK' }
+              ]
+            );
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error downloading ticket:', error);
+      Alert.alert(
+        'Generation Failed', 
+        'Could not generate ticket PDF. Please try again or contact support.',
+        [
+          { text: 'OK' }
+        ]
+      );
+    }
   };
 
   // Handle going back
@@ -48,16 +320,51 @@ export default function TicketConfirmationScreen() {
     router.push('/(tabs)/tickets');
   };
 
-  // Handle download ticket
-  const handleDownload = () => {
-    // Implement ticket download functionality
-    console.log('Downloading ticket...');
-  };
-
   // Handle share ticket
-  const handleShare = () => {
-    // Implement share functionality
-    console.log('Sharing ticket...');
+  const handleShare = async () => {
+    try {
+      const ticketMessage = `🎫 Bus Ticket Confirmation\n\n` +
+        `📍 From: ${ticket.from} (${ticket.platform})\n` +
+        `📍 To: ${ticket.to} (${ticket.gate})\n` +
+        `👥 Passengers: ${ticket.passengers}\n` +
+        `💰 Total Fare: ${ticket.fare}\n` +
+        `🆔 Ticket ID: ${ticket.id}\n` +
+        `📅 Issued: ${ticket.issuedOn}\n` +
+        `📱 Phone: ${ticket.phoneNumber}\n\n` +
+        `🚌 Virtual Ticketing System\n` +
+        `Show this ticket to conductor for validation`;
+
+      if (await Sharing.isAvailableAsync()) {
+        // Try to share the PDF first if it exists
+        try {
+          const { uri } = await Print.printToFileAsync({
+            html: generateTicketHTML(),
+            base64: false,
+          });
+          
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Share Ticket',
+          });
+        } catch (pdfError) {
+          // Fallback to text sharing
+          console.log('PDF share failed, using text:', pdfError);
+          await Share.share({
+            message: ticketMessage,
+            title: 'Bus Ticket - ' + ticket.id,
+          });
+        }
+      } else {
+        // Use React Native's built-in Share API
+        await Share.share({
+          message: ticketMessage,
+          title: 'Bus Ticket - ' + ticket.id,
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing ticket:', error);
+      Alert.alert('Share Failed', 'Could not share ticket. Please try again.');
+    }
   };
 
   // Handle view history
@@ -189,19 +496,23 @@ export default function TicketConfirmationScreen() {
           <Text style={styles.primaryButtonText}>Issue Another Ticket</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleDownload}>
-          <Ionicons name="download-outline" size={18} color="#333" style={styles.buttonIcon} />
-          <Text style={styles.secondaryButtonText}>Download Ticket</Text>
+        <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
+          <Ionicons name="document-text-outline" size={18} color="#FFFFFF" style={styles.buttonIcon} />
+          <Text style={styles.downloadButtonText}>Generate PDF</Text>
         </TouchableOpacity>
         
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={20} color="#555" />
+            <View style={styles.shareIconContainer}>
+              <Ionicons name="share-outline" size={20} color="#0066FF" />
+            </View>
             <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.actionButton} onPress={handleViewHistory}>
-            <Ionicons name="time-outline" size={20} color="#555" />
+            <View style={styles.historyIconContainer}>
+              <Ionicons name="time-outline" size={20} color="#555" />
+            </View>
             <Text style={styles.actionButtonText}>History</Text>
           </TouchableOpacity>
         </View>
@@ -444,11 +755,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
+  downloadButton: {
+    flexDirection: 'row',
+    backgroundColor: '#22C55E',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   buttonIcon: {
     marginRight: 8,
   },
   secondaryButtonText: {
     color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  downloadButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -467,6 +792,24 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     borderWidth: 1,
     borderColor: '#EEEEEE',
+  },
+  shareIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E6F3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  historyIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   actionButtonText: {
     marginTop: 4,

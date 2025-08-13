@@ -10,7 +10,6 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="Authentication" />
           <Stack.Screen name="Journey" />
-          <Stack.Screen name="Passenger_Notifications" />
           <Stack.Screen name="Notification" />
           <Stack.Screen name="Insights" />
           <Stack.Screen name="profile" />

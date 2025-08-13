@@ -8,8 +8,9 @@ export interface LoginResponse {
   user: {
     id: string;
     email: string;
-    app_role: string;
+    
     user_metadata?: {
+      user_role: string;
       busId?: string;
       route?: string;
       contactNumber?: string;

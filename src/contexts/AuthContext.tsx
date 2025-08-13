@@ -102,7 +102,7 @@ const login = async (email: string, password: string): Promise<{ success: boolea
     const data = await authApi.login({ email, password });
     
     // Only allow login if app_role is 'Conductor' and access_token exists
-    if (data.access_token && data.user?.app_role === 'Conductor') {
+    if (data.access_token && data.user?.user_metadata?.user_role === 'Conductor') {
       // Map backend user to frontend User type
       const userData: User = {
         id: data.user.id,

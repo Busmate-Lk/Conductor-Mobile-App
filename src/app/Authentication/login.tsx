@@ -43,6 +43,7 @@ export default function LoginScreen() {
     
     try {
       const result = await login(email, password);
+      console.log('Login result:', result);
       if (result.success) {
         router.replace('/(tabs)');
       } else {

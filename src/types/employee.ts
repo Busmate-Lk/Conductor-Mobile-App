@@ -48,7 +48,32 @@ export interface ProfileUpdateError {
 
 
 
-// Interface for the conductor schedule
+// Interface for API response when fetching conductor schedules
+export interface ConductorTripApiResponse {
+  id: string;
+  assignmentId: string;
+  permitNumber: string;
+  scheduleName: string;
+  routeName: string;
+  tripDate: string; // YYYY-MM-DD format
+  scheduledDepartureTime: string; // HH:MM:SS format
+  actualDepartureTime: string;
+  scheduledArrivalTime: string; // HH:MM:SS format
+  actualArrivalTime: string;
+  busId: string;
+  busPlateNumber: string;
+  busModel: string;
+  driverId: string;
+  conductorId: string;
+  status: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
+// Interface for the conductor schedule (transformed from API response)
 export interface EmployeeSchedule {
   id: string;
   date: string;
@@ -56,7 +81,7 @@ export interface EmployeeSchedule {
   endTime: string;
   route: string;
   busId: string;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status: 'pending' | 'ongoing' | 'completed' | 'cancelled' | 'upcoming';
   passengers?: number;
   revenue?: number;
 }

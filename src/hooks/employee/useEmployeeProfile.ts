@@ -1,12 +1,13 @@
 import { useAuth } from '@/hooks/auth/useAuth';
 import { employeeApi } from '@/services/api/employee';
 import { UpdateProfileRequest } from '@/types/employee';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export const useEmployeeProfile = () => {
   const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
 
   const fetchProfile = useCallback(async () => {
     if (!user?.id) {
@@ -14,10 +15,18 @@ export const useEmployeeProfile = () => {
       return;
     }
 
+    // Prevent multiple simultaneous requests
+    if (isFetchingRef.current) {
+      console.log('Profile fetch already in progress, skipping...');
+      return;
+    }
+
     try {
+      isFetchingRef.current = true;
       setIsLoading(true);
       setError(null);
       
+      console.log('Fetching profile for user:', user.id);
       const profile = await employeeApi.getProfile(user.id);
       
       const updatedUser = {
@@ -35,6 +44,7 @@ export const useEmployeeProfile = () => {
       };
       
       await updateUser(updatedUser);
+      console.log('Profile updated successfully');
       return updatedUser;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch profile';
@@ -43,8 +53,9 @@ export const useEmployeeProfile = () => {
       throw error;
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [user, updateUser]);
+  }, [user?.id]); // Only depend on user.id, not the entire user object
 
   const updateProfile = useCallback(async (data: UpdateProfileRequest) => {
     if (!user?.id) {
@@ -95,7 +106,7 @@ export const useEmployeeProfile = () => {
   } finally {
     setIsLoading(false);
   }
-}, [user, updateUser]);
+}, [user?.id]); // Only depend on user.id
 
   return {
     fetchProfile,

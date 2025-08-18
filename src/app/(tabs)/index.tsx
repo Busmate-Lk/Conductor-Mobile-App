@@ -22,7 +22,7 @@ export default function HomeScreen() {
         Alert.alert('Error', 'Failed to load profile data. Please try again.');
       });
     }
-  }, [user?.id, user?.employeeId, fetchProfile]);
+  }, [user?.id, user?.employeeId]); // Remove fetchProfile from dependencies
   
   const today = new Date().toLocaleDateString('en-LK', {
     weekday: 'long',

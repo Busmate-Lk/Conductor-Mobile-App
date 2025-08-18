@@ -1,9 +1,9 @@
+import { API_CONFIG, ServiceType } from '@/config/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class ApiClient {
-  private baseURL = 'http://47.128.250.151:8081/api';
-  // private baseURL = 'http://192.168.17.101:8080/api';
   private timeout = 10000;
+  private activeRequests = new Map<string, Promise<any>>();
 
   private async getAuthToken(): Promise<string | null> {
     try {
@@ -14,46 +14,92 @@ class ApiClient {
     }
   }
 
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-    try {
-      const config: RequestInit = {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        signal: controller.signal,
-      };
-
-      const response = await fetch(`${this.baseURL}${endpoint}`, config);
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired, could trigger logout here
-          throw new Error('UNAUTHORIZED');
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
+  private getServiceConfig(serviceType: ServiceType) {
+    switch (serviceType) {
+      case 'user':
+        return API_CONFIG.USER_MANAGEMENT;
+      case 'schedule':
+        return API_CONFIG.SCHEDULE_MANAGEMENT;
+      case 'ticket':
+        return API_CONFIG.TICKET_MANAGEMENT;
+      default:
+        return API_CONFIG.USER_MANAGEMENT;
     }
   }
 
-  async authenticatedRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    console.log('Making API request to:', `${this.baseURL}${endpoint}`);
-    console.log('Request options:', JSON.stringify(options, null, 2));
+  async request<T>(endpoint: string, options: RequestInit = {}, serviceType: ServiceType = 'user'): Promise<T> {
+    const serviceConfig = this.getServiceConfig(serviceType);
+    const baseURL = serviceConfig.baseURL;
+    const timeout = serviceConfig.timeout;
+
+    // Create a unique key for this request to prevent duplicates
+    const requestKey = `${serviceType}_${endpoint}_${JSON.stringify(options)}`;
+    
+    // If the same request is already in progress, return the existing promise
+    if (this.activeRequests.has(requestKey)) {
+      console.log('🔄 Reusing existing request for:', endpoint, 'on service:', serviceType);
+      return this.activeRequests.get(requestKey);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const requestPromise = (async (): Promise<T> => {
+      try {
+        console.log('🚀 Making new API request to:', `${baseURL}${endpoint}`, `(Service: ${serviceType})`);
+
+        const config: RequestInit = {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+          signal: controller.signal,
+        };
+
+        const response = await fetch(`${baseURL}${endpoint}`, config);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Token expired, could trigger logout here
+            throw new Error('UNAUTHORIZED');
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Request completed successfully:', endpoint, `(Service: ${serviceType})`);
+        return result;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.log('❌ Request failed:', endpoint, `(Service: ${serviceType})`, error);
+        throw error;
+      } finally {
+        // Remove from active requests after completion
+        this.activeRequests.delete(requestKey);
+      }
+    })();
+
+    // Store the request promise
+    this.activeRequests.set(requestKey, requestPromise);
+    return requestPromise;
+  }
+
+  async authenticatedRequest<T>(endpoint: string, options: RequestInit = {}, serviceType: ServiceType = 'user'): Promise<T> {
+    const serviceConfig = this.getServiceConfig(serviceType);
+    const baseURL = serviceConfig.baseURL;
+    
+    console.log('🔐 Making authenticated API request to:', `${baseURL}${endpoint}`, `(Service: ${serviceType})`);
+    console.log('📝 Request options:', JSON.stringify(options, null, 2));
     const token = await this.getAuthToken();
     
     if (!token) {
+      console.log('❌ No authentication token found');
       throw new Error('No authentication token found');
     }
+
+    console.log('🎫 Token exists, length:', token.length);
 
     return this.request<T>(endpoint, {
       ...options,
@@ -61,7 +107,7 @@ class ApiClient {
         ...options.headers,
         Authorization: `Bearer ${token}`,
       },
-    });
+    }, serviceType);
   }
 }
 

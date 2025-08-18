@@ -1,6 +1,5 @@
-import ScheduleCard from '@/components/Journey/ScheduleCard';
-import { useSchedules } from '@/hooks/Journey/useSchedules';
-import { TimeFilter } from '@/types/Journey/schedule';
+import EmployeeScheduleCard from '@/components/Journey/EmployeeScheduleCard';
+import { useEmployeeSchedule } from '@/hooks/employee/useEmployeeSchedule';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
@@ -14,6 +13,8 @@ import {
   View
 } from 'react-native';
 
+type TimeFilter = 'today' | 'upcoming' | 'past';
+
 
 
 export default function SchedulesScreen() {
@@ -24,8 +25,8 @@ export default function SchedulesScreen() {
     error, 
     activeTab, 
     setActiveTab,
-    setError 
-  } = useSchedules();
+    retry 
+  } = useEmployeeSchedule();
 
   // Handle tab press
   const handleTabPress = (tab: TimeFilter) => {
@@ -49,7 +50,7 @@ export default function SchedulesScreen() {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity 
           style={styles.retryButton}
-          onPress={() => setError(null)} // This will trigger the useEffect to fetch again
+          onPress={() => retry()} // This will trigger the useEffect to fetch again
         >
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -91,7 +92,7 @@ export default function SchedulesScreen() {
       {filteredSchedules.length > 0 ? (
         <FlatList
           data={filteredSchedules}
-          renderItem={({item}) => <ScheduleCard item={item} />}
+          renderItem={({item}) => <EmployeeScheduleCard item={item} />}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}

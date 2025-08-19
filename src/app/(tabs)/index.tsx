@@ -2,6 +2,7 @@ import QuickActions from '@/components/Home/QuickActions';
 import SummaryCard from '@/components/Home/SummaryCard';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useEmployeeProfile } from '@/hooks/employee/useEmployeeProfile';
+import { useEmployeeSchedule } from '@/hooks/employee/useEmployeeSchedule';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
@@ -203,7 +204,7 @@ export default function HomeScreen() {
         <QuickActions actions={quickActions} />
         
         {/* Today's Assignment */}
-        <Text style={styles.sectionTitle}>Today's Assignment</Text>
+        <Text style={styles.sectionTitle}> Your Next Trip</Text>
         <View style={styles.assignmentCard}>
           <Text style={styles.routeText}>Route: {user?.route || 'Matara - colombo'}</Text>
           <Text style={styles.busIdText}>Bus ID: {user?.busId || 'NC-1234'}</Text>

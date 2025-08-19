@@ -110,7 +110,7 @@ export function useEmployeeSchedule(initialTab: TimeFilter = 'today') {
         const todaySchedules = schedules.filter(schedule => {
           const isToday = schedule.date === today;
           const notCompleted = schedule.status !== 'completed';
-          return isToday && notCompleted;
+          return isToday;
         });
         
         console.log(`Found ${todaySchedules.length} schedules for today`);

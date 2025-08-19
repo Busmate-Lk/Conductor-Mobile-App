@@ -1,18 +1,44 @@
 import QuickActions from '@/components/Home/QuickActions';
 import SummaryCard from '@/components/Home/SummaryCard';
+import { useEmployeeScheduleContext } from '@/contexts/EmployeeScheduleContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useEmployeeProfile } from '@/hooks/employee/useEmployeeProfile';
-import { useEmployeeSchedule } from '@/hooks/employee/useEmployeeSchedule';
+import { formatDate, formatTime, useNextTrip } from '@/hooks/employee/useNextTrip';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Alert, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Image, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { fetchProfile, isLoading: profileLoading, error: profileError } = useEmployeeProfile();
+  const { refreshSchedules } = useEmployeeScheduleContext();
+  
+  // Use the simplified hook to get next trip
+  const { nextTrip, nextTripTab, loading: schedulesLoading } = useNextTrip();
+  
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchProfile(),
+        refreshSchedules()
+      ]);
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchProfile, refreshSchedules]);
+
+
+
 
   useEffect(() => {
     // Fetch employee details if user exists but doesn't have employee data
@@ -141,6 +167,14 @@ export default function HomeScreen() {
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FF6B6B']} // Android
+            tintColor="#FF6B6B" // iOS
+          />
+        }
       >
         {/* Greeting Section */}
         <View style={styles.greetingSection}>
@@ -204,19 +238,31 @@ export default function HomeScreen() {
         <QuickActions actions={quickActions} />
         
         {/* Today's Assignment */}
-        <Text style={styles.sectionTitle}> Your Next Trip</Text>
-        <View style={styles.assignmentCard}>
-          <Text style={styles.routeText}>Route: {user?.route || 'Matara - colombo'}</Text>
-          <Text style={styles.busIdText}>Bus ID: {user?.busId || 'NC-1234'}</Text>
-          <Text style={styles.departureText}>Departure: 6:30 AM</Text>
-          
-          <TouchableOpacity 
+       <Text style={styles.sectionTitle}> Your Next Trip</Text>
+    <View style={styles.assignmentCard}>
+      {schedulesLoading ? (
+        <Text style={{ color: 'white' }}>Loading next trip...</Text>
+      ) : nextTrip ? (
+        <>
+          <Text style={styles.routeText}>Route: {nextTrip.route}</Text>
+          <Text style={styles.busIdText}>Bus ID: {nextTrip.busId}</Text>
+          <Text style={styles.departureText}>
+            Departure: {formatTime(nextTrip.startTime)}
+          </Text>
+          <Text style={styles.departureText}>
+            Date: {formatDate(nextTrip.date)}
+          </Text>
+          <TouchableOpacity
             style={styles.viewDetailsButton}
-            onPress={() => { router.push('/(tabs)/journey'); }}
+            onPress={() => router.push(`/Journey/schedules?tab=${nextTripTab}`)}
           >
             <Text style={styles.viewDetailsText}>Tap to View Trip Details</Text>
           </TouchableOpacity>
-        </View>
+        </>
+      ) : (
+        <Text style={{ color: 'white' }}>No upcoming trips for today.</Text>
+      )}
+    </View>
         
         <Text style={styles.sectionTitle}>Today's Summary</Text>
         {/* Today's Summary */}

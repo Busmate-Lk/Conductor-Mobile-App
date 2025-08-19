@@ -1,10 +1,319 @@
+import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
+import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
+import { EmployeeSchedule } from '@/types/employee';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View
+} from 'react-native';
+
+// Component for ongoing trip view
+function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
+  // Dummy stops data (keep existing dummy data as requested)
+  const stopsList = [
+    { id: 1, name: 'Matara', km: 0 },
+    { id: 2, name: 'Weligama', km: 15 },
+    { id: 3, name: 'Mirissa', km: 25 },
+    { id: 4, name: 'Galle', km: 45 },
+    { id: 5, name: 'Hikkaduwa', km: 65 },
+    { id: 6, name: 'Ambalangoda', km: 75 },
+    { id: 7, name: 'Bentota', km: 90 },
+    { id: 8, name: 'Kalutara', km: 110 },
+    { id: 9, name: 'Panadura', km: 125 },
+    { id: 10, name: 'Moratuwa', km: 140 },
+    { id: 11, name: 'Dehiwala', km: 150 },
+    { id: 12, name: 'Colombo', km: 160 }
+  ];
+
+  // Simple static data for next stop (dummy data)
+  const startStop = stopsList[0]; // Matara
+  const endStop = stopsList[stopsList.length - 1]; // Colombo
+  const nextStop = stopsList[4]; // Hikkaduwa as next stop
+  
+  // Time information based on stops data (dummy data)
+  const departureTime = "06:30 AM";
+  const arrivalTime = "10:30 AM";
+  const nextStopTime = "08:15 AM";
+  
+  return (
+    <>
+      {/* Journey Card */}
+      <View style={styles.journeyCard}>
+        {/* Route Information - using real trip data */}
+        <View style={styles.routeContainer}>
+          <Text style={styles.routeText}>
+            {trip.fromLocation && trip.toLocation 
+              ? `${trip.fromLocation} → ${trip.toLocation}` 
+              : trip.route || 'Route Information'}
+          </Text>
+          
+          <View style={styles.busNumberContainer}>
+            <Text style={styles.busNumberText}>{trip.busPlateNumber || 'Data not found'}</Text>
+          </View>
+        </View>
+        
+        {/* Time Information - using real trip data */}
+        <View style={styles.timeContainer}>
+          <View style={styles.timeColumn}>
+            <Text style={styles.timeLabel}>Departure</Text>
+            <Text style={styles.timeValue}>{formatTime(trip.startTime)}</Text>
+            <Text style={styles.expectedTime}>
+              {trip.fromLocation || trip.route?.split(' - ')[0] || 'Start'}
+            </Text>
+          </View>
+          <View style={styles.timeColumn}>
+            <Text style={styles.timeLabel}>Arrival</Text>
+            <Text style={styles.timeValue}>{formatTime(trip.endTime)}</Text>
+            <Text style={styles.expectedTime}>
+              {trip.toLocation || trip.route?.split(' - ')[1] || 'End'}
+            </Text>
+          </View>
+        </View>
+        
+        {/* Date and Status - using real trip data */}
+        <View style={styles.dateStatusContainer}>
+          <Text style={styles.dateText}>
+            {formatDate(trip.date)}
+          </Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>Ongoing</Text>
+          </View>
+        </View>
+        
+        {/* Journey Progress - dummy data as requested */}
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressLabel}>
+            Journey Progress: {Math.round((nextStop.km / endStop.km) * 100)}%
+          </Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${Math.round((nextStop.km / endStop.km) * 100)}%` }]} />
+          </View>
+          <View style={styles.progressInfo}>
+            <Text style={styles.progressText}>{nextStop.km} km</Text>
+            <Text style={styles.progressText}>{endStop.km} km</Text>
+          </View>
+        </View>
+        
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={[styles.startButton, { opacity: 0.5 }]} disabled>
+            <Text style={styles.startButtonText}>Trip Started</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.endButton}>
+            <Text style={styles.endButtonText}>End Trip</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      
+      {/* Next Stop - dummy data as requested */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Next Stop</Text>
+        <View style={styles.nextStopContainer}>
+          <View style={styles.nextStopLeft}>
+            <View style={styles.nextStopIconContainer}>
+              <Ionicons name="location" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.nextStopDetails}>
+              <Text style={styles.nextStopName}>{nextStop.name}</Text>
+              <Text style={styles.expectedTime}>Expected: {nextStopTime}</Text>
+              <Text style={styles.expectedTime}>{nextStop.km} km from start</Text>
+            </View>
+          </View>
+          <View style={styles.nextStopRight}>
+            <Text style={styles.remainingTime}>30 min</Text>
+            <Text style={styles.remainingLabel}>remaining</Text>
+          </View>
+        </View>
+      </View>
+      
+      {/* Quick Actions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsContainer}>
+          <TouchableOpacity style={styles.actionItem}
+           onPress={() => { router.push('/Journey/seatView'); }}
+          >
+            <View style={styles.actionIconContainer}>
+              <FontAwesome5 name="ticket-alt" size={18} color="#0066FF" />
+            </View>
+            <Text style={styles.actionLabel}>Bookings</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionItem}
+           onPress={() => { router.push('/Journey/stopView'); }}
+          >
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="location" size={18} color="#0066FF" />
+            </View>
+            <Text style={styles.actionLabel}>Stop View</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      
+      {/* Trip Summary - dummy data as requested */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Trip Summary So far.....</Text>
+        
+        <View style={styles.summaryGrid}>
+          {/* Passenger Count */}
+          <View style={[styles.summaryItem, {backgroundColor: '#F0F6FF'}]}>
+            <View style={styles.summaryIconContainer}>
+              <Ionicons name="people" size={20} color="#0066FF" />
+            </View>
+            <Text style={styles.summaryValue}>54</Text>
+            <Text style={styles.summaryLabel}>Total Passengers</Text>
+          </View>
+          
+          {/* Tickets Issued */}
+          <View style={[styles.summaryItem, {backgroundColor: '#F0FFF6'}]}>
+            <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
+              <Ionicons name="receipt-outline" size={20} color="#00CC66" />
+            </View>
+            <Text style={styles.summaryValue}>65</Text>
+            <Text style={styles.summaryLabel}>Tickets Issued</Text>
+          </View>
+          
+          {/* QR Revenue */}
+          <View style={[styles.summaryItem, {backgroundColor: '#FFFBF0'}]}>
+            <View style={[styles.summaryIconContainer, {backgroundColor: '#FFF8E6'}]}>
+              <MaterialIcons name="qr-code" size={20} color="#FF9500" />
+            </View>
+            <Text style={styles.summaryValue}>Rs. 3,240</Text>
+            <Text style={styles.summaryLabel}>QR Revenue</Text>
+          </View>
+          
+          {/* Cash Revenue */}
+          <View style={[styles.summaryItem, {backgroundColor: '#F9F0FF'}]}>
+            <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
+              <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
+            </View>
+            <Text style={styles.summaryValue}>Rs. 1,890</Text>
+            <Text style={styles.summaryLabel}>Cash Revenue</Text>
+          </View>
+        </View>
+        
+        {/* Trip Duration */}
+        <View style={styles.durationContainer}>
+          <Text style={styles.durationLabel}>Trip Duration</Text>
+          <Text style={styles.durationValue}>
+            {(() => {
+            // Parse times in "hh:mm AM/PM" format
+            const parseTime = (timeStr: string) => {
+              const [time, modifier] = timeStr.split(' ');
+              let [hours, minutes] = time.split(':').map(Number);
+              if (modifier === 'PM' && hours !== 12) hours += 12;
+              if (modifier === 'AM' && hours === 12) hours = 0;
+              return hours * 60 + minutes;
+            };
+            const depMins = parseTime(departureTime);
+            const arrMins = parseTime(arrivalTime);
+            let diff = arrMins - depMins;
+            if (diff < 0) diff += 24 * 60; // handle overnight trips
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+            return `${h}h ${m}m`;
+            })()}
+          </Text>
+        </View>
+      </View>
+      
+      {/* Add bottom padding for scrolling */}
+      <View style={{height: 24}} />
+    </>
+  );
+}
+
+// Component for no ongoing trip view
+function NoOngoingTripView({ 
+  startableTrip, 
+  onStartTrip, 
+  startingTrip 
+}: { 
+  startableTrip: EmployeeSchedule | null;
+  onStartTrip: () => void;
+  startingTrip: boolean;
+}) {
+  return (
+    <View style={styles.noTripContainer}>
+      <View style={styles.noTripContent}>
+        <Ionicons name="bus-outline" size={80} color="#CCCCCC" />
+        <Text style={styles.noTripTitle}>No Ongoing Journey</Text>
+        <Text style={styles.noTripMessage}>
+          There is no ongoing trip at the moment.{'\n'}
+          {startableTrip 
+            ? 'You can start your scheduled trip when ready.' 
+            : 'Please wait for your scheduled trip time.'}
+        </Text>
+        
+        {startableTrip && (
+          <View style={styles.startTripSection}>
+            <Text style={styles.upcomingTripText}>Next Scheduled Trip:</Text>
+            <View style={styles.upcomingTripCard}>
+              <Text style={styles.upcomingTripRoute}>
+                {startableTrip.fromLocation && startableTrip.toLocation 
+                  ? `${startableTrip.fromLocation} → ${startableTrip.toLocation}` 
+                  : startableTrip.route || 'Route Information'}
+              </Text>
+              <Text style={styles.upcomingTripTime}>
+                Departure: {formatTime(startableTrip.startTime)}
+              </Text>
+              <Text style={styles.upcomingTripDate}>
+                {formatDate(startableTrip.date)}
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.startTripButton, startingTrip && styles.startTripButtonDisabled]}
+              onPress={onStartTrip}
+              disabled={startingTrip}
+            >
+              <Text style={styles.startTripButtonText}>
+                {startingTrip ? 'Starting Trip...' : 'Start Trip'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 export default function JourneyScreen() {
   const colorScheme = useColorScheme();
+  const { ongoingTrip, startableTrip, startTrip, startingTrip } = useOngoingTrip();
+  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+  
+  // Handle start trip confirmation
+  const handleStartTrip = async () => {
+    if (!startableTrip) return;
+    
+    setShowStartConfirmation(false);
+    const success = await startTrip(startableTrip.id);
+    
+    if (success) {
+      Alert.alert('Success', 'Trip started successfully!');
+    } else {
+      Alert.alert('Error', 'Failed to start trip. Please try again.');
+    }
+  };
+  
+  // Show start confirmation popup
+  const showStartTripConfirmation = () => {
+    if (!startableTrip) {
+      Alert.alert('No Trip Available', 'There is no trip available to start at this time.');
+      return;
+    }
+    setShowStartConfirmation(true);
+  };
   
   // Dummy stops data
   const stopsList = [
@@ -27,14 +336,9 @@ export default function JourneyScreen() {
   const endStop = stopsList[stopsList.length - 1]; // Colombo
   const nextStop = stopsList[4]; // Hikkaduwa as next stop
   
-  // Time information based on stops data
-  const departureTime = "06:30 AM"; // Start time from Matara
-  const arrivalTime = "10:30 AM"; // End time at Colombo
-  const nextStopTime = "08:15 AM"; // Expected time for next stop
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Adjust status bar based on color scheme */}
-       <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -44,190 +348,57 @@ export default function JourneyScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#ffffff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Ongoing Journey</Text>
+          <Text style={styles.headerTitle}>
+            {ongoingTrip ? 'Ongoing Journey' : 'Journey'}
+          </Text>
         </View>
-        
       </View>
       
       <ScrollView style={styles.container}>
-        {/* Journey Card */}
-        <View style={styles.journeyCard}>
-          {/* Route Information */}
-          <View style={styles.routeContainer}>
-            <Text style={styles.routeText}>{startStop.name} → {endStop.name}</Text>
-            
-            <View style={styles.busNumberContainer}>
-              <Text style={styles.busNumberText}>NC-1234</Text>
-            </View>
-          </View>
-          
-          {/* Time Information */}
-          <View style={styles.timeContainer}>
-            <View style={styles.timeColumn}>
-              <Text style={styles.timeLabel}>Departure</Text>
-              <Text style={styles.timeValue}>{departureTime}</Text>
-              <Text style={styles.expectedTime}>{startStop.name}</Text>
-            </View>
-            <View style={styles.timeColumn}>
-              <Text style={styles.timeLabel}>Arrival</Text>
-              <Text style={styles.timeValue}>{arrivalTime}</Text>
-              <Text style={styles.expectedTime}>{endStop.name}</Text>
-            </View>
-          </View>
-          
-          {/* Date and Status */}
-          <View style={styles.dateStatusContainer}>
-            <Text style={styles.dateText}>
-              {`Today, ${new Date().toLocaleDateString('en-US', {
-              month: 'short',
-              day: '2-digit',
-              year: 'numeric'
-              })}`}
-            </Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Ongoing</Text>
-            </View>
-          </View>
-          
-          {/* Journey Progress */}
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressLabel}>
-              Journey Progress: {Math.round((nextStop.km / endStop.km) * 100)}%
-            </Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${Math.round((nextStop.km / endStop.km) * 100)}%` }]} />
-            </View>
-            <View style={styles.progressInfo}>
-              <Text style={styles.progressText}>{nextStop.km} km</Text>
-              <Text style={styles.progressText}>{endStop.km} km</Text>
-            </View>
-          </View>
-          
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.startButton}>
-              <Text style={styles.startButtonText}>Start Trip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.endButton}>
-              <Text style={styles.endButtonText}>End Trip</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {/* Next Stop */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Next Stop</Text>
-          <View style={styles.nextStopContainer}>
-            <View style={styles.nextStopLeft}>
-              <View style={styles.nextStopIconContainer}>
-                <Ionicons name="location" size={20} color="#FFFFFF" />
-              </View>
-              <View style={styles.nextStopDetails}>
-                <Text style={styles.nextStopName}>{nextStop.name}</Text>
-                <Text style={styles.expectedTime}>Expected: {nextStopTime}</Text>
-                <Text style={styles.expectedTime}>{nextStop.km} km from start</Text>
-              </View>
-            </View>
-            <View style={styles.nextStopRight}>
-              <Text style={styles.remainingTime}>30 min</Text>
-              <Text style={styles.remainingLabel}>remaining</Text>
-            </View>
-          </View>
-        </View>
-        
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsContainer}>
-            <TouchableOpacity style={styles.actionItem}
-           onPress={() => { router.push('/Journey/seatView'); }}
-            >
-              <View style={styles.actionIconContainer}>
-                <FontAwesome5 name="ticket-alt" size={18} color="#0066FF" />
-              </View>
-              <Text style={styles.actionLabel}>Bookings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}
-             onPress={() => { router.push('/Journey/stopView'); }}
-            >
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="location" size={18} color="#0066FF" />
-              </View>
-              <Text style={styles.actionLabel}>Stop View</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {/* Trip Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trip Summary So far.....</Text>
-          
-          <View style={styles.summaryGrid}>
-            {/* Passenger Count */}
-            <View style={[styles.summaryItem, {backgroundColor: '#F0F6FF'}]}>
-              <View style={styles.summaryIconContainer}>
-                <Ionicons name="people" size={20} color="#0066FF" />
-              </View>
-              <Text style={styles.summaryValue}>54</Text>
-              <Text style={styles.summaryLabel}>Total Passengers</Text>
-            </View>
-            
-            {/* Tickets Issued */}
-            <View style={[styles.summaryItem, {backgroundColor: '#F0FFF6'}]}>
-              <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
-                <Ionicons name="receipt-outline" size={20} color="#00CC66" />
-              </View>
-              <Text style={styles.summaryValue}>65</Text>
-              <Text style={styles.summaryLabel}>Tickets Issued</Text>
-            </View>
-            
-            {/* QR Revenue */}
-            <View style={[styles.summaryItem, {backgroundColor: '#FFFBF0'}]}>
-              <View style={[styles.summaryIconContainer, {backgroundColor: '#FFF8E6'}]}>
-                <MaterialIcons name="qr-code" size={20} color="#FF9500" />
-              </View>
-              <Text style={styles.summaryValue}>Rs. 3,240</Text>
-              <Text style={styles.summaryLabel}>QR Revenue</Text>
-            </View>
-            
-            {/* Cash Revenue */}
-            <View style={[styles.summaryItem, {backgroundColor: '#F9F0FF'}]}>
-              <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
-                <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
-              </View>
-              <Text style={styles.summaryValue}>Rs. 1,890</Text>
-              <Text style={styles.summaryLabel}>Cash Revenue</Text>
-            </View>
-          </View>
-          
-          {/* Trip Duration */}
-          <View style={styles.durationContainer}>
-            <Text style={styles.durationLabel}>Trip Duration</Text>
-            <Text style={styles.durationValue}>
-              {(() => {
-              // Parse times in "hh:mm AM/PM" format
-              const parseTime = (timeStr: string) => {
-                const [time, modifier] = timeStr.split(' ');
-                let [hours, minutes] = time.split(':').map(Number);
-                if (modifier === 'PM' && hours !== 12) hours += 12;
-                if (modifier === 'AM' && hours === 12) hours = 0;
-                return hours * 60 + minutes;
-              };
-              const depMins = parseTime(departureTime);
-              const arrMins = parseTime(arrivalTime);
-              let diff = arrMins - depMins;
-              if (diff < 0) diff += 24 * 60; // handle overnight trips
-              const h = Math.floor(diff / 60);
-              const m = diff % 60;
-              return `${h}h ${m}m`;
-              })()}
-            </Text>
-          </View>
-        </View>
-        
-        {/* Add bottom padding for scrolling */}
-        <View style={{height: 24}} />
+        {ongoingTrip ? (
+          // Show ongoing trip details
+          <OngoingTripView trip={ongoingTrip} />
+        ) : (
+          // Show no trip message with start trip option
+          <NoOngoingTripView 
+            startableTrip={startableTrip}
+            onStartTrip={showStartTripConfirmation}
+            startingTrip={startingTrip}
+          />
+        )}
       </ScrollView>
+
+      {/* Start Trip Confirmation Modal */}
+      <Modal
+        visible={showStartConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowStartConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Start Trip</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to start the trip for route{' '}
+              {startableTrip?.route}?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowStartConfirmation(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleStartTrip}
+              >
+                <Text style={styles.confirmButtonText}>Yes, Start</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -526,5 +697,138 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     color: '#666',
+  },
+  // No trip view styles
+  noTripContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  noTripContent: {
+    alignItems: 'center',
+    maxWidth: 300,
+  },
+  noTripTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noTripMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  startTripSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  upcomingTripText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  upcomingTripCard: {
+    backgroundColor: '#F0F6FF',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#0066FF',
+  },
+  upcomingTripRoute: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  upcomingTripTime: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  upcomingTripDate: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  startTripButton: {
+    backgroundColor: '#0066FF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    width: '100%',
+  },
+  startTripButtonDisabled: {
+    opacity: 0.6,
+  },
+  startTripButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 300,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F7',
+    marginRight: 8,
+  },
+  confirmButton: {
+    backgroundColor: '#0066FF',
+    marginLeft: 8,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

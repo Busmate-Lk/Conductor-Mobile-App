@@ -29,15 +29,25 @@ class ApiClient {
 
   async request<T>(endpoint: string, options: RequestInit = {}, serviceType: ServiceType = 'user'): Promise<T> {
     const serviceConfig = this.getServiceConfig(serviceType);
-    const baseURL = serviceConfig.baseURL;
+    let baseURL = String(serviceConfig.baseURL || '');
     const timeout = serviceConfig.timeout;
 
+    // Ensure scheme exists (prepend http:// if missing)
+    if (!/^https?:\/\//i.test(baseURL)) {
+      baseURL = `http://${baseURL}`;
+    }
+
+    // Normalize and build final URL
+    const normalizedBase = baseURL.replace(/\/+$/g, '');       // remove trailing slashes
+    const normalizedEndpoint = endpoint.replace(/^\/+/g, '');  // remove leading slashes
+    const fullUrl = `${normalizedBase}/${normalizedEndpoint}`;
+
     // Create a unique key for this request to prevent duplicates
-    const requestKey = `${serviceType}_${endpoint}_${JSON.stringify(options)}`;
+    const requestKey = `${serviceType}_${fullUrl}_${JSON.stringify(options)}`;
     
     // If the same request is already in progress, return the existing promise
     if (this.activeRequests.has(requestKey)) {
-      console.log('🔄 Reusing existing request for:', endpoint, 'on service:', serviceType);
+      console.log('🔄 Reusing existing request for:', fullUrl, 'on service:', serviceType);
       return this.activeRequests.get(requestKey);
     }
 
@@ -46,7 +56,7 @@ class ApiClient {
 
     const requestPromise = (async (): Promise<T> => {
       try {
-        console.log('🚀 Making new API request to:', `${baseURL}${endpoint}`, `(Service: ${serviceType})`);
+        console.log('🚀 Making new API request to:', fullUrl, `(Service: ${serviceType})`);
 
         const config: RequestInit = {
           ...options,
@@ -57,7 +67,7 @@ class ApiClient {
           signal: controller.signal,
         };
 
-        const response = await fetch(`${baseURL}${endpoint}`, config);
+        const response = await fetch(fullUrl, config);
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -69,11 +79,11 @@ class ApiClient {
         }
 
         const result = await response.json();
-        console.log('✅ Request completed successfully:', endpoint, `(Service: ${serviceType})`);
+        console.log('✅ Request completed successfully:', fullUrl, `(Service: ${serviceType})`);
         return result;
       } catch (error) {
         clearTimeout(timeoutId);
-        console.log('❌ Request failed:', endpoint, `(Service: ${serviceType})`, error);
+        console.log('❌ Request failed:', fullUrl, `(Service: ${serviceType})`, error);
         throw error;
       } finally {
         // Remove from active requests after completion
@@ -88,9 +98,19 @@ class ApiClient {
 
   async authenticatedRequest<T>(endpoint: string, options: RequestInit = {}, serviceType: ServiceType = 'user'): Promise<T> {
     const serviceConfig = this.getServiceConfig(serviceType);
-    const baseURL = serviceConfig.baseURL;
+    let baseURL = String(serviceConfig.baseURL || '');
     
-    console.log('🔐 Making authenticated API request to:', `${baseURL}${endpoint}`, `(Service: ${serviceType})`);
+    // Ensure scheme exists (prepend http:// if missing)
+    if (!/^https?:\/\//i.test(baseURL)) {
+      baseURL = `http://${baseURL}`;
+    }
+
+    // Normalize and build final URL
+    const normalizedBase = baseURL.replace(/\/+$/g, '');       // remove trailing slashes
+    const normalizedEndpoint = endpoint.replace(/^\/+/g, '');  // remove leading slashes
+    const fullUrl = `${normalizedBase}/${normalizedEndpoint}`;
+    
+    console.log('🔐 Making authenticated API request to:', fullUrl, `(Service: ${serviceType})`);
     console.log('📝 Request options:', JSON.stringify(options, null, 2));
     const token = await this.getAuthToken();
     

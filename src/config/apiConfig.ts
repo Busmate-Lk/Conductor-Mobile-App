@@ -14,4 +14,12 @@ export const API_CONFIG = {
   },
 } as const;
 
+// Debug: Log the actual environment variables being used
+console.log('🔧 API_CONFIG loaded with URLs:', {
+  USER: process.env.EXPO_PUBLIC_USER_API_URL,
+  SCHEDULE: process.env.EXPO_PUBLIC_SCHEDULE_API_URL,
+  TICKET: process.env.EXPO_PUBLIC_TICKET_API_URL,
+});
+
 export type ServiceType = 'user' | 'schedule' | 'ticket';
+

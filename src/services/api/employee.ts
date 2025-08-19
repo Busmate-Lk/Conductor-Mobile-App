@@ -46,4 +46,11 @@ export const employeeApi = {
       body: JSON.stringify({ shiftId }),
     }, 'schedule');
   },
+
+  // Start trip - Schedule Management Service
+  startTrip: async (tripId: string): Promise<ConductorTripApiResponse> => {
+    return apiClient.authenticatedRequest<ConductorTripApiResponse>(`/trips/${tripId}/start`, {
+      method: 'PATCH',
+    }, 'schedule');
+  },
 };

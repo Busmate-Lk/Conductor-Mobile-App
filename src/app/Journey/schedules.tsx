@@ -1,10 +1,12 @@
 import EmployeeScheduleCard from '@/components/Journey/EmployeeScheduleCard';
-import { useEmployeeSchedule } from '@/hooks/employee/useEmployeeSchedule';
+import { useEmployeeScheduleContext } from '@/contexts/EmployeeScheduleContext';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -18,6 +20,7 @@ type TimeFilter = 'today' | 'upcoming' | 'past';
 
 
 export default function SchedulesScreen() {
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { 
     schedules,
     filteredSchedules, 
@@ -25,8 +28,31 @@ export default function SchedulesScreen() {
     error, 
     activeTab, 
     setActiveTab,
-    retry 
-  } = useEmployeeSchedule();
+    retry,
+    refreshSchedules
+  } = useEmployeeScheduleContext();
+
+  // State for pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Set initial tab from route params
+  useEffect(() => {
+    if (tab && (tab === 'today' || tab === 'upcoming' || tab === 'past')) {
+      setActiveTab(tab as TimeFilter);
+    }
+  }, [tab, setActiveTab]);
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshSchedules();
+    } catch (error) {
+      console.error('Failed to refresh schedules:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshSchedules]);
 
   // Handle tab press
   const handleTabPress = (tab: TimeFilter) => {
@@ -96,6 +122,14 @@ export default function SchedulesScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0066FF']} // Android
+              tintColor="#0066FF" // iOS
+            />
+          }
         />
       ) : (
         <View style={styles.emptyContainer}>

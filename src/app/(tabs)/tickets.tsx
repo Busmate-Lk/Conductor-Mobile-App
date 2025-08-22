@@ -1,11 +1,13 @@
 import { useTicket } from '@/contexts/TicketContext';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
+  RefreshControl,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -13,34 +15,35 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useOngoingTrip } from '../../hooks/employee/useOngoingTrip';
+import { journeyApi } from '../../services/api/journey';
+import { RouteStop } from '../../types/journey';
 
 export default function TicketsScreen() {
-  const { setTicketData } = useTicket();
-  // Dummy stops data
-  const stopsList = [
-    { id: 1, name: 'Matara', km: 0 },
-    { id: 2, name: 'Weligama', km: 15 },
-    { id: 3, name: 'Mirissa', km: 25 },
-    { id: 4, name: 'Galle', km: 45 },
-    { id: 5, name: 'Hikkaduwa', km: 65 },
-    { id: 6, name: 'Ambalangoda', km: 75 },
-    { id: 7, name: 'Bentota', km: 90 },
-    { id: 8, name: 'Kalutara', km: 110 },
-    { id: 9, name: 'Panadura', km: 125 },
-    { id: 10, name: 'Moratuwa', km: 140 },
-    { id: 11, name: 'Dehiwala', km: 150 },
-    { id: 12, name: 'Colombo', km: 160 }
-  ];
+  const { 
+    setTicketData, 
+    routeStopsCache, 
+    setRouteStopsCache, 
+    isRouteStopsCacheValid 
+  } = useTicket();
+  const { ongoingTrip } = useOngoingTrip();
+  
+  // State for route stops
+  const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [usingCachedData, setUsingCachedData] = useState(false);
 
   // Base fare per km
   const farePerKm = 2.5;
 
-  const [fromLocation, setFromLocation] = useState('Matara');
-  const [toLocation, setToLocation] = useState('Colombo');
+  const [fromLocation, setFromLocation] = useState('');
+  const [toLocation, setToLocation] = useState('');
   const [passengerCount, setPassengerCount] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState('+94 77 123 4567');
-  const [totalFare, setTotalFare] = useState(400.00); // Matara to Colombo fare
-  const [farePerPassenger, setFarePerPassenger] = useState(400.00);
+  const [totalFare, setTotalFare] = useState(0);
+  const [farePerPassenger, setFarePerPassenger] = useState(0);
 
   // Dropdown states
   const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -48,24 +51,107 @@ export default function TicketsScreen() {
   const [fromSearchText, setFromSearchText] = useState('');
   const [toSearchText, setToSearchText] = useState('');
 
+  // Fetch route stops when component mounts
+  const fetchRouteStops = async (isRefresh = false) => {
+    if (!ongoingTrip?.RouteId) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    // Check if we have valid cached data and it's not a forced refresh
+    if (!isRefresh && isRouteStopsCacheValid(ongoingTrip.RouteId)) {
+      console.log('Using cached route stops for RouteId:', ongoingTrip.RouteId);
+      setRouteStops(routeStopsCache!.stops);
+      setLoading(false);
+      setRefreshing(false);
+      setUsingCachedData(true);
+      
+      // Set default locations if not set
+      const cachedStops = routeStopsCache!.stops;
+      if (cachedStops.length >= 2 && (!fromLocation || !toLocation)) {
+        setFromLocation(cachedStops[0].stopName);
+        setToLocation(cachedStops[cachedStops.length - 1].stopName);
+        updateFare(cachedStops[0].stopName, cachedStops[cachedStops.length - 1].stopName, 1);
+      }
+      return;
+    }
+
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
+      console.log('Fetching route stops from API for RouteId:', ongoingTrip.RouteId);
+      const stops: RouteStop[] = await journeyApi.getRouteStops(ongoingTrip.RouteId);
+      
+      if (!stops || stops.length === 0) {
+        throw new Error('No route stops found for this trip');
+      }
+      
+      const sortedStops = stops.sort((a, b) => a.stopOrder - b.stopOrder);
+      setRouteStops(sortedStops);
+      setUsingCachedData(false);
+      
+      // Cache the fetched data
+      setRouteStopsCache({
+        routeId: ongoingTrip.RouteId,
+        stops: sortedStops,
+        lastFetched: Date.now()
+      });
+      
+      // Set default from and to locations only if not already set
+      if (sortedStops.length >= 2 && (!fromLocation || !toLocation)) {
+        setFromLocation(sortedStops[0].stopName);
+        setToLocation(sortedStops[sortedStops.length - 1].stopName);
+        updateFare(sortedStops[0].stopName, sortedStops[sortedStops.length - 1].stopName, 1);
+      }
+      
+    } catch (err) {
+      console.error('Error fetching route stops:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load route stops');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    // If route has changed and we have cached data for a different route, clear it
+    if (routeStopsCache && ongoingTrip?.RouteId && routeStopsCache.routeId !== ongoingTrip.RouteId) {
+      console.log('Route changed, clearing cache');
+      setRouteStops([]);
+    }
+    fetchRouteStops();
+  }, [ongoingTrip?.RouteId]);
+
+  // Pull to refresh handler - force refresh from API
+  const onRefresh = () => {
+    console.log('Pull to refresh - forcing API call');
+    fetchRouteStops(true);
+  };
+
   // Filter stops based on search text
   const getFilteredStops = (searchText: string) => {
-    if (searchText.trim() === '') return stopsList;
-    return stopsList.filter(stop => 
-      stop.name.toLowerCase().includes(searchText.toLowerCase())
+    if (searchText.trim() === '') return routeStops;
+    return routeStops.filter((stop: RouteStop) => 
+      stop.stopName.toLowerCase().includes(searchText.toLowerCase())
     );
   };
 
   // Calculate fare based on distance and passenger count
   const calculateFare = (from: string, to: string, passengers: number) => {
-    const fromStop = stopsList.find(stop => stop.name === from);
-    const toStop = stopsList.find(stop => stop.name === to);
+    const fromStop = routeStops.find((stop: RouteStop) => stop.stopName === from);
+    const toStop = routeStops.find((stop: RouteStop) => stop.stopName === to);
     
-    if (!fromStop || !toStop) {
+    if (!fromStop || !toStop || from === to) {
       return { totalFare: 0, farePerPassenger: 0 };
     }
     
-    const distance = Math.abs(toStop.km - fromStop.km);
+    const distance = Math.abs(toStop.distanceFromStartKm - fromStop.distanceFromStartKm);
     const farePerPassenger = Math.max(distance * farePerKm, 10); // Minimum fare Rs. 10
     const totalFare = farePerPassenger * passengers;
     
@@ -80,6 +166,10 @@ export default function TicketsScreen() {
   };
 
   const selectFromLocation = (stopName: string) => {
+    if (stopName === toLocation) {
+      // Don't allow same from and to locations
+      return;
+    }
     setFromLocation(stopName);
     setShowFromDropdown(false);
     setFromSearchText('');
@@ -87,6 +177,10 @@ export default function TicketsScreen() {
   };
 
   const selectToLocation = (stopName: string) => {
+    if (stopName === fromLocation) {
+      // Don't allow same from and to locations
+      return;
+    }
     setToLocation(stopName);
     setShowToDropdown(false);
     setToSearchText('');
@@ -161,6 +255,50 @@ export default function TicketsScreen() {
       </View>
 
       <View style={styles.container}>
+        {!ongoingTrip ? (
+          // No ongoing trip screen
+          <View style={styles.noTripContainer}>
+            <View style={styles.noTripContent}>
+              <Ionicons name="bus-outline" size={80} color="#666666" />
+              <Text style={styles.noTripTitle}>No Ongoing Trip</Text>
+              <Text style={styles.noTripMessage}>
+                Start a trip to switch on the ticketing machine
+              </Text>
+            </View>
+          </View>
+        ) : loading ? (
+          // Loading state
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading route stops...</Text>
+          </View>
+        ) : error ? (
+          // Error state with retry button
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={60} color="#FF6B6B" />
+            <Text style={styles.errorTitle}>Connection Error</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton} 
+              onPress={() => fetchRouteStops()}
+            >
+              <Ionicons name="refresh" size={20} color="white" />
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Main ticketing interface with pull-to-refresh
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#22C55E']}
+                tintColor="#22C55E"
+              />
+            }
+          >
+          <>
         {/* From Location */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>From</Text>
@@ -243,6 +381,9 @@ export default function TicketsScreen() {
           <FontAwesome5 name="ticket-alt" size={20} color="white" style={styles.ticketIcon} />
           <Text style={styles.issueButtonText}>Issue Ticket</Text>
         </TouchableOpacity>
+          </>
+          </ScrollView>
+        )}
       </View>
 
       {/* From Location Modal */}
@@ -277,15 +418,29 @@ export default function TicketsScreen() {
             
             <FlatList
               data={getFilteredStops(fromSearchText)}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item) => item.stopId}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.stopItem}
-                  onPress={() => selectFromLocation(item.name)}
+                  style={[
+                    styles.stopItem,
+                    item.stopName === toLocation && styles.disabledOption
+                  ]}
+                  onPress={() => selectFromLocation(item.stopName)}
+                  disabled={item.stopName === toLocation}
                 >
                   <View style={styles.stopInfo}>
-                    <Text style={styles.stopName}>{item.name}</Text>
-                    <Text style={styles.stopDistance}>KM {item.km}</Text>
+                    <Text style={[
+                      styles.stopName,
+                      item.stopName === toLocation && styles.disabledText
+                    ]}>
+                      {item.stopName}
+                    </Text>
+                    <Text style={[
+                      styles.stopDistance,
+                      item.stopName === toLocation && styles.disabledText
+                    ]}>
+                      KM {item.distanceFromStartKm}
+                    </Text>
                   </View>
                   {/* <Ionicons name="chevron-forward" size={20} color="#999" /> */}
                 </TouchableOpacity>
@@ -328,15 +483,29 @@ export default function TicketsScreen() {
             
             <FlatList
               data={getFilteredStops(toSearchText)}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item) => item.stopId}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.stopItem}
-                  onPress={() => selectToLocation(item.name)}
+                  style={[
+                    styles.stopItem,
+                    item.stopName === fromLocation && styles.disabledOption
+                  ]}
+                  onPress={() => selectToLocation(item.stopName)}
+                  disabled={item.stopName === fromLocation}
                 >
                   <View style={styles.stopInfo}>
-                    <Text style={styles.stopName}>{item.name}</Text>
-                    <Text style={styles.stopDistance}>KM {item.km}</Text>
+                    <Text style={[
+                      styles.stopName,
+                      item.stopName === fromLocation && styles.disabledText
+                    ]}>
+                      {item.stopName}
+                    </Text>
+                    <Text style={[
+                      styles.stopDistance,
+                      item.stopName === fromLocation && styles.disabledText
+                    ]}>
+                      KM {item.distanceFromStartKm}
+                    </Text>
                   </View>
                   {/* <Ionicons name="chevron-forward" size={20} color="#999" /> */}
                 </TouchableOpacity>
@@ -382,7 +551,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E', // Added background color for container
+    backgroundColor: '#141313ff', // Changed to pure black for consistency
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -396,13 +565,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dropdown: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
+    backgroundColor: '#1E1E1E', // Darker background
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   dropdownText: {
     color: 'white',
@@ -410,23 +581,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   counterContainer: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
+    backgroundColor: '#1E1E1E', // Darker background
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   counterButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(150, 150, 150, 0.3)',
+    backgroundColor: 'rgba(150, 150, 150, 0.2)', // More subtle background
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   incrementButton: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#22C55E', // Green to match theme
+    borderColor: '#22C55E',
   },
   counterButtonText: {
     fontSize: 24,
@@ -439,11 +615,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   fareContainer: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: '#1E1E1E', // Darker background
+    borderRadius: 12,
+    padding: 20,
     alignItems: 'center',
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   fareLabel: {
     color: '#999',
@@ -451,10 +629,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fareAmount: {
-    color: '#0066FF',
+    color: '#22C55E', // Changed to green to match the theme
     fontSize: 36,
     fontWeight: 'bold',
     marginBottom: 8,
+    textShadowColor: 'rgba(34, 197, 94, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   farePerPassenger: {
     color: '#999',
@@ -467,12 +648,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   phoneInputContainer: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
+    backgroundColor: '#1E1E1E', // Darker background
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   phoneInput: {
     flex: 1,
@@ -484,13 +667,18 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   issueButton: {
-    backgroundColor: '#0066FF',
-    borderRadius: 10,
+    backgroundColor: '#22C55E', // Changed to green for better contrast
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     marginTop: 16,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   ticketIcon: {
     marginRight: 8,
@@ -503,15 +691,17 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    // backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    // backgroundColor: 'rgba(0, 0, 0, 0.8)', // Added semi-transparent overlay
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#333333',
+    backgroundColor: '#1E1E1E', // Darker modal background
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '67%',
     paddingBottom: 20,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -519,7 +709,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#444444', // Lighter border for better contrast
   },
   modalTitle: {
     color: '#22C55E',
@@ -532,11 +722,13 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#333333', // Slightly lighter than modal background
     margin: 20,
     marginBottom: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   searchIcon: {
     marginRight: 8,
@@ -554,7 +746,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#444444', // Lighter border
   },
   stopInfo: {
     flex: 1,
@@ -568,5 +760,85 @@ const styles = StyleSheet.create({
   stopDistance: {
     color: '#999',
     fontSize: 12,
+  },
+  disabledOption: {
+    opacity: 0.4,
+    backgroundColor: '#2A2A2A', // Slightly different background for disabled items
+  },
+  disabledText: {
+    color: '#666666',
+  },
+  noTripContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noTripContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  noTripTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  noTripMessage: {
+    color: '#CCCCCC',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  errorTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#22C55E',
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  scrollView: {
+    flex: 1,
   },
 });

@@ -1,10 +1,12 @@
 import { useEmployeeScheduleContext } from '@/contexts/EmployeeScheduleContext';
+import { useTicket } from '@/contexts/TicketContext';
 import { employeeApi } from '@/services/api/employee';
 import { EmployeeSchedule } from '@/types/employee';
 import { useState } from 'react';
 
 export function useOngoingTrip() {
   const { schedules, refreshSchedules } = useEmployeeScheduleContext();
+  const { clearRouteStopsCache } = useTicket();
   const [startingTrip, setStartingTrip] = useState(false);
 
   // Find ongoing trip
@@ -88,13 +90,26 @@ export function useOngoingTrip() {
   const ongoingTrip = getOngoingTrip();
   const startableTrip = getStartableTrip();
 
+  // Refresh trips data
+  const refreshTrips = async () => {
+    const currentOngoingTrip = getOngoingTrip();
+    await refreshSchedules();
+    const newOngoingTrip = getOngoingTrip();
+    
+    // If the ongoing trip has changed (ended or different trip), clear route stops cache
+    if (currentOngoingTrip?.id !== newOngoingTrip?.id) {
+      console.log('Ongoing trip changed, clearing route stops cache');
+      clearRouteStopsCache();
+    }
+  };
 
-  console.log('Ongoing trip:', ongoingTrip);
+  // console.log('Ongoing trip:', ongoingTrip);
 
   return {
     ongoingTrip,
     startableTrip,
     startTrip,
     startingTrip,
+    refreshTrips,
   };
 }

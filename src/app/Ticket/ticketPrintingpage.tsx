@@ -71,20 +71,18 @@ export default function TicketPrintingScreen() {
         </View> */}
         
         {/* QR Code */}
-        {/* <View style={styles.qrContainer}>
-          <Image
-            source={require('@/assets/images/qr-placeholder.svg')}
-            style={styles.qrImage}
-            resizeMode="contain"
-          />
-        </View> */}
+        <View style={styles.qrContainer}>
+          <View style={styles.qrPlaceholder}>
+            <Text style={styles.qrPlaceholderText}>QR Code</Text>
+          </View>
+        </View>
         
         {/* Printing Message */}
         <Text style={styles.printingText}>
-          {isPrintingComplete ? 'Ticket Generated!' : 'Printing Ticket...'}
+          {isPrintingComplete ? 'Ticket Generated!' : 'Generating Ticket...'}
         </Text>
         <Text style={styles.waitText}>
-          {isPrintingComplete ? 'Ready for collection' : 'Please wait'}
+          {isPrintingComplete ? 'Ticket processing completed' : 'Please wait while we process your ticket'}
         </Text>
         
         {/* Route Information */}
@@ -155,6 +153,20 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+  },
+  qrPlaceholder: {
+    width: 120,
+    height: 120,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qrPlaceholderText: {
+    color: '#0066FF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   qrImage: {
     width: 120,

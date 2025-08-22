@@ -7,17 +7,17 @@ Your app now supports **3 different microservices** with separate base URLs:
 ### 1. **User Management Service** (`user`)
 - **Port:** 8081
 - **Handles:** Authentication, conductor profiles, notifications
-- **Base URL:** `http://13.229.67.236:8081/api`
+- **Base URL:** `http://18.140.161.237:8081/api`
 
 ### 2. **Schedule Management Service** (`schedule`)
 - **Port:** 8080  
 - **Handles:** Schedules, trips, routes, analytics, employee shifts
-- **Base URL:** `http://13.229.67.236:8080/api`
+- **Base URL:** `http://18.140.161.237:8080/api`
 
 ### 3. **Ticket Management Service** (`ticket`)
 - **Port:** 8083
 - **Handles:** Ticket validation, issuing, scanning, printing
-- **Base URL:** `http://13.229.67.236:8083/api`
+- **Base URL:** `http://18.140.161.237:8083/api`
 
 ## Environment Variables
 
@@ -25,9 +25,9 @@ Configure different base URLs using environment variables:
 
 ```bash
 # .env
-EXPO_PUBLIC_USER_API_URL=13.229.67.236:8081/api
-EXPO_PUBLIC_SCHEDULE_API_URL=13.229.67.236:8080/api
-EXPO_PUBLIC_TICKET_API_URL=13.229.67.236:8083/api
+EXPO_PUBLIC_USER_API_URL=18.140.161.237:8081/api
+EXPO_PUBLIC_SCHEDULE_API_URL=18.140.161.237:8080/api
+EXPO_PUBLIC_TICKET_API_URL=18.140.161.237:8083/api
 ```
 
 ## Usage Examples

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   Modal,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -38,7 +39,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
   // Simple static data for next stop (dummy data)
   const startStop = stopsList[0]; // Matara
   const endStop = stopsList[stopsList.length - 1]; // Colombo
-  const nextStop = stopsList[4]; // Hikkaduwa as next stop
+  const nextStop = stopsList[5]; // Hikkaduwa as next stop
   
   // Time information based on stops data (dummy data)
   const departureTime = "06:30 AM";
@@ -289,8 +290,21 @@ function NoOngoingTripView({
 
 export default function JourneyScreen() {
   const colorScheme = useColorScheme();
-  const { ongoingTrip, startableTrip, startTrip, startingTrip } = useOngoingTrip();
+  const { ongoingTrip, startableTrip, startTrip, startingTrip, refreshTrips } = useOngoingTrip();
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshTrips(); // Refresh trip data
+    } catch (error) {
+      console.error('Error refreshing trips:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   // Handle start trip confirmation
   const handleStartTrip = async () => {
@@ -354,7 +368,17 @@ export default function JourneyScreen() {
         </View>
       </View>
       
-      <ScrollView style={styles.container}>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#22C55E']}
+            tintColor="#22C55E"
+          />
+        }
+      >
         {ongoingTrip ? (
           // Show ongoing trip details
           <OngoingTripView trip={ongoingTrip} />

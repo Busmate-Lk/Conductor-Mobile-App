@@ -1,8 +1,10 @@
+import { isStartable } from '@/contexts/EmployeeScheduleContext';
+import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { EmployeeSchedule } from '@/types/employee';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   item: EmployeeSchedule;
@@ -61,6 +63,25 @@ const formatTime = (timeStr: string): string => {
 };
 
 export default function EmployeeScheduleCard({ item }: Props) {
+  const { startTrip, startingTrip } = useOngoingTrip();
+  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+
+  // Handle start trip confirmation
+  const handleStartTrip = async () => {
+    setShowStartConfirmation(false);
+    const success = await startTrip(item.id);
+    
+    if (success) {
+      Alert.alert('Success', 'Trip started successfully!');
+    } else {
+      Alert.alert('Error', 'Failed to start trip. Please try again.');
+    }
+  };
+
+  // Show start confirmation popup
+  const showStartTripConfirmation = () => {
+    setShowStartConfirmation(true);
+  };
   // Get status display text
   const getStatusText = (status: EmployeeSchedule['status']): string => {
     switch (status) {
@@ -148,10 +169,10 @@ export default function EmployeeScheduleCard({ item }: Props) {
         {item.status === 'ongoing' && (
           <>
             <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => router.push('/Journey/seatView')}
+              style={styles.successButton}
+              disabled={true}
             >
-              <Text style={styles.primaryButtonText}>View Seats</Text>
+              <Text style={styles.successButtonText}>Trip Started</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.secondaryButton}
@@ -164,12 +185,24 @@ export default function EmployeeScheduleCard({ item }: Props) {
 
         {(item.status === 'upcoming' || item.status === 'pending') && (
           <>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
-            >
-              <Text style={styles.primaryButtonText}>Start Trip</Text>
-            </TouchableOpacity>
+            {isStartable(item) ? (
+              <TouchableOpacity 
+                style={[styles.primaryButton, startingTrip && styles.disabledButton]}
+                onPress={showStartTripConfirmation}
+                disabled={startingTrip}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {startingTrip ? 'Starting...' : 'Start Trip'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.disabledButton}
+                disabled={true}
+              >
+                <Text style={styles.disabledButtonText}>Not Yet Startable</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={styles.secondaryButton}
               onPress={() => router.push(`/Journey/trip_details?id=${item.id}`)}
@@ -205,6 +238,41 @@ export default function EmployeeScheduleCard({ item }: Props) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Start Trip Confirmation Modal */}
+      <Modal
+        visible={showStartConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowStartConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Start Trip?</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to start this trip?{'\n\n'}
+              <Text style={styles.modalRoute}>{item.route}</Text>{'\n'}
+              Departure: {formatTime(item.startTime)}
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowStartConfirmation(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleStartTrip}
+              >
+                <Text style={styles.confirmButtonText}>Yes, Start</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -283,5 +351,94 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 14,
     fontWeight: '500',
+  },
+  disabledButton: {
+    flex: 1,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  disabledButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  successButton: {
+    flex: 1,
+    backgroundColor: '#22C55E',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  successButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 300,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalRoute: {
+    fontWeight: '600',
+    color: '#0066FF',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F7',
+    marginRight: 8,
+  },
+  confirmButton: {
+    backgroundColor: '#0066FF',
+    marginLeft: 8,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

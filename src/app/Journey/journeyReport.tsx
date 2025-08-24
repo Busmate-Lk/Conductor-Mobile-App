@@ -1,55 +1,153 @@
+import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
+import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Modal,
   SafeAreaView,
-  StatusBar,
   ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+
+// Define QR Log interface
+interface QRLog {
+  id: string;
+  name: string;
+  qrCode: string;
+  from: string;
+  to: string;
+  scanTime: string;
+  fare: number;
+}
+
+// Helper functions for status display
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'upcoming':
+      return '#F5A623'; // Orange
+    case 'ongoing':
+      return '#22C55E'; // Green
+    case 'completed':
+      return '#6B7280'; // Gray
+    case 'cancelled':
+      return '#EF4444'; // Red
+    default:
+      return '#6B7280'; // Gray
+  }
+}
+
+function getStatusDisplayText(status: string): string {
+  switch (status) {
+    case 'upcoming':
+      return 'Upcoming';
+    case 'ongoing':
+      return 'Ongoing';
+    case 'completed':
+      return 'Completed';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return 'Unknown';
+  }
+}
 
 export default function TripReportScreen() {
-  // Trip report data - this would typically come from API
+  const { ongoingTrip, endTrip, endingTrip } = useOngoingTrip();
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+
+  // If no ongoing trip, show message
+  if (!ongoingTrip) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="#0066FF" />
+        <View style={styles.noTripContainer}>
+          <Ionicons name="bus-outline" size={80} color="#CCCCCC" />
+          <Text style={styles.noTripTitle}>No Ongoing Trip</Text>
+          <Text style={styles.noTripMessage}>
+            There is no ongoing trip to report at the moment.
+          </Text>
+          <TouchableOpacity 
+            style={styles.backToSchedulesButton}
+            onPress={() => router.push('/Journey/schedules')}
+          >
+            <Text style={styles.backToSchedulesText}>View Schedules</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Trip report data using ongoing trip data
   const tripData = {
     details: {
-      route: 'Colombo → Kandy',
-      busNumber: 'NC-2152',
-      date: '2025-06-12',
-      time: '08:00 AM – 12:30 PM',
-      status: 'completed'
+      route: ongoingTrip.fromLocation && ongoingTrip.toLocation 
+        ? `${ongoingTrip.fromLocation} → ${ongoingTrip.toLocation}` 
+        : ongoingTrip.route || 'Route Information',
+      busNumber: ongoingTrip.busPlateNumber || ongoingTrip.busId || 'N/A',
+      date: formatDate(ongoingTrip.date),
+      time: `${formatTime(ongoingTrip.startTime)} – ${formatTime(ongoingTrip.endTime)}`,
+      status: ongoingTrip.status
     },
     summary: {
-      totalPassengers: 42,
-      ticketsIssued: 45,
-      qrRevenue: 3240,
-      cashRevenue: 1580,
-      duration: '4h 30m'
+      totalPassengers: ongoingTrip.passengers || 0,
+      ticketsIssued: 0, // Will be populated by API later
+      qrRevenue: 0, // Will be populated by API later
+      cashRevenue: ongoingTrip.revenue || 0,
+      duration: calculateTripDuration(ongoingTrip.startTime, ongoingTrip.endTime)
     },
-    qrLogs: [
-      {
-        id: '1',
-        name: 'Kasun Perera',
-        qrCode: '#QR240612001',
-        from: 'Colombo',
-        to: 'Kandy',
-        scanTime: '08:15 AM',
-        fare: 120
-      },
-      {
-        id: '2',
-        name: 'Nimali Silva',
-        qrCode: '#QR240612002',
-        from: 'Colombo',
-        to: 'Kegalle',
-        scanTime: '08:22 AM',
-        fare: 85
-      }
-    ],
-    totalQrLogs: 45,
-    totalRevenue: 4820
+    qrLogs: [] as QRLog[], // Will be populated by API later
+    totalQrLogs: 0,
+    totalRevenue: ongoingTrip.revenue || 0
+  };
+
+  // Calculate trip duration
+  function calculateTripDuration(startTime: string, endTime: string): string {
+    try {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      let diffMinutes = endMinutes - startMinutes;
+      if (diffMinutes < 0) diffMinutes += 24 * 60; // Handle overnight trips
+      
+      const hours = Math.floor(diffMinutes / 60);
+      const minutes = diffMinutes % 60;
+      
+      return `${hours}h ${minutes}m`;
+    } catch (error) {
+      return 'N/A';
+    }
+  }
+
+  // Handle end trip
+  const handleEndTrip = async () => {
+    setShowEndConfirmation(false);
+    const success = await endTrip(ongoingTrip.id);
+    
+    if (success) {
+      Alert.alert('Success', 'Trip ended successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/Journey/schedules')
+        }
+      ]);
+    } else {
+      Alert.alert('Error', 'Failed to end trip. Please try again.');
+    }
+  };
+
+  // Show end confirmation popup
+  const showEndTripConfirmation = () => {
+    setShowEndConfirmation(true);
   };
 
   const handleExportPDF = () => {
@@ -92,9 +190,13 @@ export default function TripReportScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Text style={styles.cardTitle}>Trip Details</Text>
-            <View style={styles.completedBadge}>
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-              <Text style={styles.completedText}>Completed</Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ongoingTrip.status) }]}>
+              <Ionicons 
+                name={ongoingTrip.status === 'completed' ? 'checkmark' : ongoingTrip.status === 'ongoing' ? 'play' : 'time'} 
+                size={16} 
+                color="#FFFFFF" 
+              />
+              <Text style={styles.statusText}>{getStatusDisplayText(ongoingTrip.status)}</Text>
             </View>
           </View>
 
@@ -183,48 +285,60 @@ export default function TripReportScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>QR Scan Logs</Text>
 
-          {tripData.qrLogs.map((log) => (
-            <View key={log.id} style={styles.logItem}>
-              <View style={styles.logHeader}>
-                <Text style={styles.passengerName}>{log.name}</Text>
-                <View style={styles.successIndicator}>
-                  <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+          {tripData.qrLogs.length > 0 ? (
+            <>
+              {tripData.qrLogs.map((log) => (
+                <View key={log.id} style={styles.logItem}>
+                  <View style={styles.logHeader}>
+                    <Text style={styles.passengerName}>{log.name}</Text>
+                    <View style={styles.successIndicator}>
+                      <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.qrCode}>{log.qrCode}</Text>
+                  
+                  <View style={styles.logDetailsRow}>
+                    <View style={styles.logDetail}>
+                      <Text style={styles.logDetailLabel}>From:</Text>
+                      <Text style={styles.logDetailValue}>{log.from}</Text>
+                    </View>
+                    <View style={styles.logDetail}>
+                      <Text style={styles.logDetailLabel}>To:</Text>
+                      <Text style={styles.logDetailValue}>{log.to}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.logDetailsRow}>
+                    <View style={styles.logDetail}>
+                      <Text style={styles.logDetailLabel}>Scan:</Text>
+                      <Text style={styles.logDetailValue}>{log.scanTime}</Text>
+                    </View>
+                    <View style={styles.logDetail}>
+                      <Text style={styles.logDetailLabel}>Fare:</Text>
+                      <Text style={styles.fareValue}>Rs. {log.fare}</Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
+              ))}
               
-              <Text style={styles.qrCode}>{log.qrCode}</Text>
-              
-              <View style={styles.logDetailsRow}>
-                <View style={styles.logDetail}>
-                  <Text style={styles.logDetailLabel}>From:</Text>
-                  <Text style={styles.logDetailValue}>{log.from}</Text>
-                </View>
-                <View style={styles.logDetail}>
-                  <Text style={styles.logDetailLabel}>To:</Text>
-                  <Text style={styles.logDetailValue}>{log.to}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.logDetailsRow}>
-                <View style={styles.logDetail}>
-                  <Text style={styles.logDetailLabel}>Scan:</Text>
-                  <Text style={styles.logDetailValue}>{log.scanTime}</Text>
-                </View>
-                <View style={styles.logDetail}>
-                  <Text style={styles.logDetailLabel}>Fare:</Text>
-                  <Text style={styles.fareValue}>Rs. {log.fare}</Text>
-                </View>
-              </View>
+              <TouchableOpacity 
+                style={styles.viewAllButton} 
+                onPress={handleViewAllLogs}
+              >
+                <Text style={styles.viewAllText}>View All Logs ({tripData.totalQrLogs})</Text>
+                <Ionicons name="chevron-down" size={16} color="#0066FF" />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.noLogsContainer}>
+              <Ionicons name="qr-code-outline" size={48} color="#CCCCCC" />
+              <Text style={styles.noLogsTitle}>No QR Scans Yet</Text>
+              <Text style={styles.noLogsMessage}>
+                QR scan logs will appear here as passengers board the bus
+              </Text>
             </View>
-          ))}
-
-          <TouchableOpacity 
-            style={styles.viewAllButton} 
-            onPress={handleViewAllLogs}
-          >
-            <Text style={styles.viewAllText}>View All Logs ({tripData.totalQrLogs})</Text>
-            <Ionicons name="chevron-down" size={16} color="#0066FF" />
-          </TouchableOpacity>
+          )}
         </View>
 
         {/* Total Revenue */}
@@ -232,6 +346,29 @@ export default function TripReportScreen() {
           <Text style={styles.cardTitle}>Total Revenue</Text>
           <Text style={styles.totalRevenueValue}>Rs. {tripData.totalRevenue.toLocaleString()}</Text>
         </View>
+
+        {/* End Trip Button */}
+        {ongoingTrip.status === 'ongoing' && (
+          <View style={styles.card}>
+            <TouchableOpacity 
+              style={styles.endTripButton}
+              onPress={showEndTripConfirmation}
+              disabled={endingTrip}
+            >
+              {endingTrip ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.endTripButtonText}>Ending Trip...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="stop-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.endTripButtonText}>End Trip</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
@@ -263,6 +400,43 @@ export default function TripReportScreen() {
         {/* Bottom spacing */}
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      {/* End Trip Confirmation Modal */}
+      <Modal
+        visible={showEndConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEndConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalIcon}>
+              <Ionicons name="stop-circle" size={48} color="#FF3B30" />
+            </View>
+            
+            <Text style={styles.modalTitle}>End Trip?</Text>
+            <Text style={styles.modalMessage}>
+              Are you really want to end the trip? This action cannot be undone.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEndConfirmation(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleEndTrip}
+              >
+                <Text style={styles.confirmButtonText}>End Trip</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -326,7 +500,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
   completedText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  statusText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
@@ -492,5 +679,124 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 20,
+  },
+  noTripContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  noTripTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noTripMessage: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  backToSchedulesButton: {
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backToSchedulesText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  noLogsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noLogsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  noLogsMessage: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  endTripButton: {
+    backgroundColor: '#FF3B30',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  endTripButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  modalIcon: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F5F5F5',
+  },
+  confirmButton: {
+    backgroundColor: '#FF3B30',
+  },
+  cancelButtonText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

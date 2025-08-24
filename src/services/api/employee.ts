@@ -53,4 +53,11 @@ export const employeeApi = {
       method: 'PATCH',
     }, 'schedule');
   },
+
+  // End trip - Schedule Management Service
+  endTrip: async (tripId: string): Promise<ConductorTripApiResponse> => {
+    return apiClient.authenticatedRequest<ConductorTripApiResponse>(`/trips/${tripId}/complete`, {
+      method: 'PATCH',
+    }, 'schedule');
+  },
 };

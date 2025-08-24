@@ -5,6 +5,7 @@ import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   RefreshControl,
@@ -20,6 +21,34 @@ import {
 
 // Component for ongoing trip view
 function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
+  const { endTrip, endingTrip } = useOngoingTrip();
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
+
+  // Handle end trip
+  const handleEndTrip = async () => {
+    setShowEndModal(false);
+    const success = await endTrip(trip.id);
+    
+    if (success) {
+      Alert.alert('Success', 'Trip ended successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Stay on journey page, it will automatically update to show no ongoing trip
+          }
+        }
+      ]);
+    } else {
+      Alert.alert('Error', 'Failed to end trip. Please try again.');
+    }
+  };
+
+  // Show end confirmation popup
+  const showEndTripConfirmation = () => {
+    setShowEndModal(true);
+  };
+
   // Dummy stops data (keep existing dummy data as requested)
   const stopsList = [
     { id: 1, name: 'Matara', km: 0 },
@@ -110,8 +139,19 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
           <TouchableOpacity style={[styles.startButton, { opacity: 0.5 }]} disabled>
             <Text style={styles.startButtonText}>Trip Started</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.endButton}>
-            <Text style={styles.endButtonText}>End Trip</Text>
+          <TouchableOpacity 
+            style={styles.endButton}
+            onPress={showEndTripConfirmation}
+            disabled={endingTrip}
+          >
+            {endingTrip ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={[styles.endButtonText, { marginLeft: 8 }]}>Ending...</Text>
+              </>
+            ) : (
+              <Text style={styles.endButtonText}>End Trip</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -229,6 +269,45 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
       
       {/* Add bottom padding for scrolling */}
       <View style={{height: 24}} />
+
+      {/* End Trip Confirmation Modal */}
+      <Modal
+        visible={showEndModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEndModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>End Trip</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to end this trip?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEndModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleEndTrip}
+                disabled={endingTrip}
+              >
+                {endingTrip ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={[styles.confirmButtonText, { marginLeft: 8 }]}>Ending...</Text>
+                  </>
+                ) : (
+                  <Text style={styles.confirmButtonText}>End Trip</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -236,12 +315,10 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
 // Component for no ongoing trip view
 function NoOngoingTripView({ 
   startableTrip, 
-  onStartTrip, 
-  startingTrip 
+  onViewSchedules 
 }: { 
   startableTrip: EmployeeSchedule | null;
-  onStartTrip: () => void;
-  startingTrip: boolean;
+  onViewSchedules: () => void;
 }) {
   return (
     <View style={styles.noTripContainer}>
@@ -251,7 +328,7 @@ function NoOngoingTripView({
         <Text style={styles.noTripMessage}>
           There is no ongoing trip at the moment.{'\n'}
           {startableTrip 
-            ? 'You can start your scheduled trip when ready.' 
+            ? 'Check your schedules to start your next trip.' 
             : 'Please wait for your scheduled trip time.'}
         </Text>
         
@@ -273,12 +350,11 @@ function NoOngoingTripView({
             </View>
             
             <TouchableOpacity
-              style={[styles.startTripButton, startingTrip && styles.startTripButtonDisabled]}
-              onPress={onStartTrip}
-              disabled={startingTrip}
+              style={styles.startTripButton}
+              onPress={onViewSchedules}
             >
               <Text style={styles.startTripButtonText}>
-                {startingTrip ? 'Starting Trip...' : 'Start Trip'}
+                See Your Schedules
               </Text>
             </TouchableOpacity>
           </View>
@@ -290,8 +366,7 @@ function NoOngoingTripView({
 
 export default function JourneyScreen() {
   const colorScheme = useColorScheme();
-  const { ongoingTrip, startableTrip, startTrip, startingTrip, refreshTrips } = useOngoingTrip();
-  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+  const { ongoingTrip, startableTrip, refreshTrips } = useOngoingTrip();
   const [refreshing, setRefreshing] = useState(false);
   
   // Pull to refresh handler
@@ -306,27 +381,9 @@ export default function JourneyScreen() {
     }
   };
   
-  // Handle start trip confirmation
-  const handleStartTrip = async () => {
-    if (!startableTrip) return;
-    
-    setShowStartConfirmation(false);
-    const success = await startTrip(startableTrip.id);
-    
-    if (success) {
-      Alert.alert('Success', 'Trip started successfully!');
-    } else {
-      Alert.alert('Error', 'Failed to start trip. Please try again.');
-    }
-  };
-  
-  // Show start confirmation popup
-  const showStartTripConfirmation = () => {
-    if (!startableTrip) {
-      Alert.alert('No Trip Available', 'There is no trip available to start at this time.');
-      return;
-    }
-    setShowStartConfirmation(true);
+  // Navigate to schedules page
+  const navigateToSchedules = () => {
+    router.push('/Journey/schedules');
   };
   
   // Dummy stops data
@@ -383,46 +440,13 @@ export default function JourneyScreen() {
           // Show ongoing trip details
           <OngoingTripView trip={ongoingTrip} />
         ) : (
-          // Show no trip message with start trip option
+          // Show no trip message with schedules button
           <NoOngoingTripView 
             startableTrip={startableTrip}
-            onStartTrip={showStartTripConfirmation}
-            startingTrip={startingTrip}
+            onViewSchedules={navigateToSchedules}
           />
         )}
       </ScrollView>
-
-      {/* Start Trip Confirmation Modal */}
-      <Modal
-        visible={showStartConfirmation}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowStartConfirmation(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Start Trip</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to start the trip for route{' '}
-              {startableTrip?.route}?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowStartConfirmation(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleStartTrip}
-              >
-                <Text style={styles.confirmButtonText}>Yes, Start</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

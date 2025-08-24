@@ -1,33 +1,21 @@
-import { useEmployeeScheduleContext } from '@/contexts/EmployeeScheduleContext';
+import { isStartable, useEmployeeScheduleContext } from '@/contexts/EmployeeScheduleContext';
 import { useTicket } from '@/contexts/TicketContext';
 import { employeeApi } from '@/services/api/employee';
 import { EmployeeSchedule } from '@/types/employee';
 import { useState } from 'react';
 
 export function useOngoingTrip() {
-  const { schedules, refreshSchedules } = useEmployeeScheduleContext();
+  const { schedules, refreshSchedules, updateTripStatus } = useEmployeeScheduleContext();
   const { clearRouteStopsCache } = useTicket();
   const [startingTrip, setStartingTrip] = useState(false);
+  const [endingTrip, setEndingTrip] = useState(false);
 
   // Find ongoing trip
   const getOngoingTrip = (): EmployeeSchedule | null => {
     if (!schedules || schedules.length === 0) return null;
     
-    const now = new Date();
-    
-    // Find trip that is currently ongoing
-    const ongoingTrip = schedules.find(schedule => {
-      // Parse date and time to create full datetime
-      const [year, month, day] = schedule.date.split('-').map(Number);
-      const [startHour, startMin] = schedule.startTime.split(':').map(Number);
-      const [endHour, endMin] = schedule.endTime.split(':').map(Number);
-      
-      const startDateTime = new Date(year, month - 1, day, startHour, startMin);
-      const endDateTime = new Date(year, month - 1, day, endHour, endMin);
-      
-      // Check if current time is between start and end time
-      return now >= startDateTime && now <= endDateTime;
-    });
+    // Find trip that has status 'ongoing'
+    const ongoingTrip = schedules.find(schedule => schedule.status === 'ongoing');
     
     return ongoingTrip || null;
   };
@@ -36,25 +24,15 @@ export function useOngoingTrip() {
   const getStartableTrip = (): EmployeeSchedule | null => {
     if (!schedules || schedules.length === 0) return null;
     
-    const now = new Date();
-    
-    // Find the next upcoming trip (within reasonable time to start - e.g., 30 minutes before)
-    const upcomingTrips = schedules.filter(schedule => {
-      const [year, month, day] = schedule.date.split('-').map(Number);
-      const [startHour, startMin] = schedule.startTime.split(':').map(Number);
-      const startDateTime = new Date(year, month - 1, day, startHour, startMin);
-      
-      // Allow starting 30 minutes before scheduled time
-      const canStartTime = new Date(startDateTime.getTime() - 30 * 60 * 1000);
-      
-      // Only include trips that are upcoming and can be started
-      return now >= canStartTime && now < startDateTime;
+    // Find upcoming trips that are startable
+    const startableTrips = schedules.filter(schedule => {
+      return (schedule.status === 'upcoming' || schedule.status === 'pending') && isStartable(schedule);
     });
     
-    if (upcomingTrips.length === 0) return null;
+    if (startableTrips.length === 0) return null;
     
     // Sort by start time and return the earliest
-    const sortedTrips = upcomingTrips.sort((a, b) => {
+    const sortedTrips = startableTrips.sort((a, b) => {
       const [yearA, monthA, dayA] = a.date.split('-').map(Number);
       const [hourA, minA] = a.startTime.split(':').map(Number);
       const dateTimeA = new Date(yearA, monthA - 1, dayA, hourA, minA);
@@ -73,10 +51,15 @@ export function useOngoingTrip() {
   const startTrip = async (tripId: string): Promise<boolean> => {
     try {
       setStartingTrip(true);
+      
+      // Make the API call to start the trip first
       await employeeApi.startTrip(tripId);
       
-      // Refresh schedules to get updated status
-      await refreshSchedules();
+      // Then update the trip status in context for UI feedback
+      updateTripStatus(tripId, 'ongoing');
+      
+      // Don't refresh immediately to avoid overwriting our status change
+      // The status will be confirmed on next natural refresh
       
       return true;
     } catch (error) {
@@ -84,6 +67,26 @@ export function useOngoingTrip() {
       return false;
     } finally {
       setStartingTrip(false);
+    }
+  };
+
+  // End a trip
+  const endTrip = async (tripId: string): Promise<boolean> => {
+    try {
+      setEndingTrip(true);
+      
+      // Make the API call to end the trip first
+      await employeeApi.endTrip(tripId);
+      
+      // Then update the trip status in context for UI feedback
+      updateTripStatus(tripId, 'completed');
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to end trip:', error);
+      return false;
+    } finally {
+      setEndingTrip(false);
     }
   };
 
@@ -110,6 +113,8 @@ export function useOngoingTrip() {
     startableTrip,
     startTrip,
     startingTrip,
+    endTrip,
+    endingTrip,
     refreshTrips,
   };
 }

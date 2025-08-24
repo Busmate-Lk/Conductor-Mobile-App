@@ -49,6 +49,29 @@ export interface RouteStop {
   distanceFromStartKm: number;
 }
 
+// Schedule stop structure from API - includes timing information
+export interface ScheduleStop {
+  scheduleStopId: string;
+  routeStopId: string;
+  stopId: string;
+  stopName: string;
+  stopDescription?: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  isAccessible?: boolean;
+  stopOrder: number;
+  distanceFromStartKm: number;
+  arrivalTime: string; // Expected arrival time from schedule (HH:MM:SS format)
+  departureTime: string; // Expected departure time from schedule (HH:MM:SS format)
+}
+
 // Enhanced stop for UI with timing data and Google Maps support
 export interface EnhancedStop {
   stopId: string;
@@ -62,4 +85,5 @@ export interface EnhancedStop {
   actualArrivalTime?: string;
   actualDepartureTime?: string;
   status: 'pending' | 'arrived' | 'departed';
+  hasScheduledTime?: boolean; // Flag to indicate if this stop has scheduled times
 }

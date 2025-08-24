@@ -17,7 +17,7 @@ Your app now supports **3 different microservices** with separate base URLs:
 ### 3. **Ticket Management Service** (`ticket`)
 - **Port:** 8083
 - **Handles:** Ticket validation, issuing, scanning, printing
-- **Base URL:** `http://18.140.161.237:8083/api`
+- **Base URL:** `http://54.91.217.117:8083/api`
 
 ## Environment Variables
 
@@ -27,7 +27,7 @@ Configure different base URLs using environment variables:
 # .env
 EXPO_PUBLIC_USER_API_URL=18.140.161.237:8081/api
 EXPO_PUBLIC_SCHEDULE_API_URL=18.140.161.237:8080/api
-EXPO_PUBLIC_TICKET_API_URL=18.140.161.237:8083/api
+EXPO_PUBLIC_TICKET_API_URL=54.91.217.117:8083/api
 ```
 
 ## Usage Examples

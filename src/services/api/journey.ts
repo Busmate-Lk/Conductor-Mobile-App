@@ -49,6 +49,14 @@ export const journeyApi = {
     }
   },
 
+  // Get stops for a schedule with timings - Schedule Management Service
+  getScheduleStops: async (scheduleId: string): Promise<any[]> => {
+    console.log('🔗 Making API call to: /stops/schedule/' + scheduleId);
+    console.log('🏗️  Full URL will be: http://18.140.161.237:8080/api/stops/schedule/' + scheduleId);
+    
+    return apiClient.authenticatedRequest<any[]>(`/stops/schedule/${scheduleId}`, {}, 'schedule');
+  },
+
   // Get seat layout - Schedule Management Service
   getSeatLayout: async (busId: string): Promise<any> => {
     return apiClient.authenticatedRequest<any>(`/buses/${busId}/seats`, {}, 'schedule');

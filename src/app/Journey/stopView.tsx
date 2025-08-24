@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useOngoingTrip } from '../../hooks/employee/useOngoingTrip';
 import { journeyApi } from '../../services/api/journey';
-import { EnhancedStop, RouteStop } from '../../types/journey';
+import { EnhancedStop, RouteStop, ScheduleStop } from '../../types/journey';
 
 export default function StopViewScreen() {
   const { ongoingTrip } = useOngoingTrip();
@@ -24,62 +24,33 @@ export default function StopViewScreen() {
   const [currentStopIndex, setCurrentStopIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Function to generate dummy time data
-  const generateDummyTimes = (routeStops: RouteStop[]) => {
-    const journeyStartTime = new Date();
-    journeyStartTime.setHours(1, 0, 0, 0); // Start at 5:00 PM from the ongoing trip data
-    
-    const averageSpeed = 40; // km/h
-    
-    return routeStops.map((stop, index) => {
-      // Calculate estimated arrival time based on distance and speed
-      const travelTimeHours = stop.distanceFromStartKm / averageSpeed;
-      const arrivalTime = new Date(journeyStartTime.getTime() + (travelTimeHours * 60 * 60 * 1000));
-      
-      // Departure time is arrival time + 3 minutes stop time
-      const departureTime = new Date(arrivalTime.getTime() + 3 * 60 * 1000);
-      
-      // For demo purposes, simulate some stops as completed/current
-      let status: 'pending' | 'arrived' | 'departed' = 'pending';
-      const currentTime = new Date();
-      
-      if (arrivalTime < currentTime) {
-        status = index < 3 ? 'departed' : (index === 3 ? 'arrived' : 'pending');
-      }
-      
-      // Generate actual times with some variation for completed stops
-      let actualArrivalTime: string | undefined;
-      let actualDepartureTime: string | undefined;
-      
-      if (status === 'departed') {
-        // Add some random delay/early arrival for realism
-        const variation = (Math.random() - 0.5) * 10; // ±5 minutes
-        const actualArrival = new Date(arrivalTime.getTime() + variation * 60 * 1000);
-        const actualDeparture = new Date(actualArrival.getTime() + 3 * 60 * 1000);
-        
-        actualArrivalTime = actualArrival.toTimeString().substring(0, 5);
-        actualDepartureTime = actualDeparture.toTimeString().substring(0, 5);
-      }
+  // Function to merge route stops with schedule times
+  const mergeRouteAndScheduleData = (routeStops: RouteStop[], scheduleStops: ScheduleStop[]): EnhancedStop[] => {
+    return routeStops.map((routeStop) => {
+      // Find matching schedule stop by stopId
+      const scheduleStop = scheduleStops.find(ss => ss.stopId === routeStop.stopId);
       
       return {
-        stopId: stop.stopId,
-        stopName: stop.stopName,
-        stopOrder: stop.stopOrder,
-        distanceFromStart: stop.distanceFromStartKm, // Map API property to UI property
-        latitude: stop.location?.latitude, // Extract for Google Maps
-        longitude: stop.location?.longitude, // Extract for Google Maps
-        arrivalTime: arrivalTime.toTimeString().substring(0, 5), // HH:MM format
-        departureTime: departureTime.toTimeString().substring(0, 5),
-        actualArrivalTime,
-        actualDepartureTime,
-        status
-      } as EnhancedStop;
+        stopId: routeStop.stopId,
+        stopName: routeStop.stopName,
+        stopOrder: routeStop.stopOrder,
+        distanceFromStart: routeStop.distanceFromStartKm,
+        latitude: routeStop.location?.latitude,
+        longitude: routeStop.location?.longitude,
+        // Use schedule times if available, otherwise indicate not available
+        arrivalTime: scheduleStop?.arrivalTime?.substring(0, 5) || 'N/A',
+        departureTime: scheduleStop?.departureTime?.substring(0, 5) || 'N/A',
+        actualArrivalTime: undefined, // Will be set when conductor marks arrival
+        actualDepartureTime: undefined, // Will be set when conductor marks departure
+        status: 'pending' as const,
+        hasScheduledTime: !!scheduleStop // Flag to track if this stop has scheduled times
+      };
     });
   };
 
   // Fetch stops data function
   const fetchStops = async (isRefresh = false) => {
-    if (!ongoingTrip?.RouteId) {
+    if (!ongoingTrip?.scheduleId || !ongoingTrip?.RouteId) {
       setError('No ongoing trip found. Please start a trip first.');
       setLoading(false);
       setRefreshing(false);
@@ -92,40 +63,52 @@ export default function StopViewScreen() {
       }
       setError(null);
       
-      console.log('🚌 Fetching stops for route:', ongoingTrip.RouteId);
-      console.log('🚌 Ongoing trip details:', {
-        RouteId: ongoingTrip.RouteId,
-        routeName: ongoingTrip.routeName,
-        scheduleId: ongoingTrip.scheduleId
-      });
+      console.log('🚌 Fetching stops data for:');
+      console.log('� Schedule ID:', ongoingTrip.scheduleId);
+      console.log('🛣️  Route ID:', ongoingTrip.RouteId);
       
-      const routeStops: RouteStop[] = await journeyApi.getRouteStops(ongoingTrip.RouteId);
-      console.log('✅ Route stops received:', routeStops);
-      console.log('📍 First stop details:', {
-        name: routeStops[0]?.stopName,
-        distance: routeStops[0]?.distanceFromStartKm,
-        location: routeStops[0]?.location
-      });
+      // Make both API calls in parallel
+      const [routeStops, scheduleStops] = await Promise.all([
+        journeyApi.getRouteStops(ongoingTrip.RouteId).catch(err => {
+          console.warn('Route stops failed:', err);
+          return []; // Return empty array if route stops fail
+        }),
+        journeyApi.getScheduleStops(ongoingTrip.scheduleId).catch(err => {
+          console.warn('Schedule stops failed:', err);
+          return []; // Return empty array if schedule stops fail
+        })
+      ]);
+      
+      console.log('✅ Route stops received:', routeStops.length, 'stops');
+      console.log('📅 Schedule stops received:', scheduleStops.length, 'stops');
       
       if (!routeStops || routeStops.length === 0) {
         throw new Error('No stops found for this route. Please contact support.');
       }
       
-      // Sort stops by order to ensure correct sequence
-      const sortedStops = routeStops.sort((a, b) => a.stopOrder - b.stopOrder);
+      // Sort route stops by order to ensure correct sequence
+      const sortedRouteStops = routeStops.sort((a, b) => a.stopOrder - b.stopOrder);
       
-      // Generate enhanced stops with timing data
-      const enhancedStops = generateDummyTimes(sortedStops);
-      console.log('🔧 Enhanced stops with distances:', enhancedStops.map(s => ({ 
-        name: s.stopName, 
-        distance: s.distanceFromStart,
-        hasLocation: !!(s.latitude && s.longitude)
-      })));
+      // Merge route data with schedule times
+      const enhancedStops = mergeRouteAndScheduleData(sortedRouteStops, scheduleStops);
+      
+     console.log(
+        '🔧 Enhanced stops with merged data:\n' +
+        JSON.stringify(enhancedStops.map((s: EnhancedStop) => ({
+          name: s.stopName,
+          arrivalTime: s.arrivalTime,
+          departureTime: s.departureTime,
+          distance: s.distanceFromStart,
+          hasScheduledTime: s.hasScheduledTime,
+          hasLocation: !!(s.latitude && s.longitude)
+        })), null, 2)
+     );
+      
       setStops(enhancedStops);
       
-      // Find current stop index (first pending or arrived stop)
-      const currentIndex = enhancedStops.findIndex(stop => 
-        stop.status === 'pending' || stop.status === 'arrived'
+      // Find current stop index (first stop that hasn't departed yet)
+      const currentIndex = enhancedStops.findIndex((stop: EnhancedStop) => 
+        stop.status !== 'departed'
       );
       setCurrentStopIndex(currentIndex >= 0 ? currentIndex : 0);
       
@@ -149,7 +132,7 @@ export default function StopViewScreen() {
   // Fetch stops data when component mounts
   useEffect(() => {
     fetchStops();
-  }, [ongoingTrip?.RouteId]);
+  }, [ongoingTrip?.scheduleId, ongoingTrip?.RouteId]);
 
   // Get route information
   const startStop = stops.length > 0 ? stops[0] : null;
@@ -167,17 +150,27 @@ export default function StopViewScreen() {
       return new Date(`2000-01-01T${timeString}:00`).toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit', 
-        hour12: true 
+        hour12: true,
+        timeZone: 'Asia/Colombo'
       });
     } catch {
       return timeString;
     }
   };
 
+  // Get current time in Sri Lankan timezone
+  const getCurrentSriLankanTime = () => {
+    const now = new Date();
+    const sriLankanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Colombo"}));
+    return sriLankanTime.toTimeString().substring(0, 5); // HH:MM format
+    
+  };
+
+
   // Calculate time difference for completed stops
   const getTimeDifference = (stop: EnhancedStop) => {
-    if (!stop.actualArrivalTime || !stop.arrivalTime) {
-      return { text: 'On time', color: '#33CC33', status: 'on_time' };
+    if (!stop.hasScheduledTime || !stop.actualArrivalTime || !stop.arrivalTime || stop.arrivalTime === 'N/A') {
+      return { text: 'No schedule', color: '#999', status: 'no_schedule' };
     }
     
     const expectedTime = new Date(`2000-01-01T${stop.arrivalTime}:00`);
@@ -216,17 +209,24 @@ export default function StopViewScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: () => {
-            // Update the local state
+          onPress: async () => {
+            const currentTime = getCurrentSriLankanTime();
+            
+            // Update the local state with real-time timestamps
             const updatedStops = stops.map((s, index) => {
               if (index === stopIndex) {
-                const now = new Date();
-                const currentTime = now.toTimeString().substring(0, 5);
-                
                 if (action === 'arrived') {
-                  return { ...s, status: 'arrived', actualArrivalTime: currentTime };
+                  return { 
+                    ...s, 
+                    status: 'arrived', 
+                    actualArrivalTime: currentTime 
+                  };
                 } else {
-                  return { ...s, status: 'departed', actualDepartureTime: currentTime };
+                  return { 
+                    ...s, 
+                    status: 'departed', 
+                    actualDepartureTime: currentTime 
+                  };
                 }
               }
               return s;
@@ -239,7 +239,21 @@ export default function StopViewScreen() {
               setCurrentStopIndex(Math.min(stopIndex + 1, stops.length - 1));
             }
             
-            Alert.alert('Success', `${stop.stopName} marked as ${action}`);
+            // TODO: Persist to backend API when available
+            try {
+              if (action === 'arrived' && ongoingTrip?.scheduleId) {
+                // await journeyApi.recordStopArrival(ongoingTrip.scheduleId, stop.stopId, new Date().toISOString());
+                console.log('Recording arrival for stop:', stop.stopName, 'at', currentTime);
+              }
+              if (action === 'departed' && ongoingTrip?.scheduleId) {
+                // await journeyApi.recordStopDeparture(ongoingTrip.scheduleId, stop.stopId, new Date().toISOString());
+                console.log('Recording departure for stop:', stop.stopName, 'at', currentTime);
+              }
+            } catch (err) {
+              console.warn('Failed to persist stop action to server', err);
+            }
+            
+            Alert.alert('Success', `${stop.stopName} marked as ${action} at ${formatTime(currentTime)}`);
           }
         }
       ]
@@ -370,9 +384,11 @@ export default function StopViewScreen() {
           </View>
           <Text style={styles.errorTitle}>Unable to Load Stops</Text>
           <Text style={styles.errorMessage}>{error}</Text>
-          {ongoingTrip?.RouteId && (
+          {(ongoingTrip?.scheduleId || ongoingTrip?.RouteId) && (
             <Text style={styles.errorDetails}>
-              Route ID: {ongoingTrip.RouteId}
+              {ongoingTrip?.scheduleId && `Schedule ID: ${ongoingTrip.scheduleId}`}
+              {ongoingTrip?.scheduleId && ongoingTrip?.RouteId && '\n'}
+              {ongoingTrip?.RouteId && `Route ID: ${ongoingTrip.RouteId}`}
             </Text>
           )}
           <TouchableOpacity 
@@ -457,7 +473,9 @@ export default function StopViewScreen() {
                     formatTime(latestPassedStop.actualDepartureTime) : 'N/A'}
                 </Text>
                 <Text style={styles.passedStopStatus}>
-                  {getTimeDifference(latestPassedStop).text}
+                  {latestPassedStop.hasScheduledTime ? 
+                    getTimeDifference(latestPassedStop).text : 
+                    'No schedule to compare'}
                 </Text>
               </View>
             </View>
@@ -473,7 +491,9 @@ export default function StopViewScreen() {
               <View style={styles.nextStopInfo}>
                 <Text style={styles.nextStopLabel}>Next Stop</Text>
                 <Text style={styles.nextStopName}>
-                  {nextStop.stopName} - ETA {formatTime(nextStop.arrivalTime)}
+                  {nextStop.stopName} - {nextStop.hasScheduledTime ? 
+                    `ETA ${formatTime(nextStop.arrivalTime)}` : 
+                    'ETA not available'}
                 </Text>
                 <Text style={styles.nextStopDistance}>
                   {nextStop.distanceFromStart - (currentStop?.distanceFromStart || 0)} km away
@@ -522,9 +542,15 @@ export default function StopViewScreen() {
                     <Text style={styles.stopName}>
                       {index + 1}. {stop.stopName}
                     </Text>
-                    <Text style={styles.expectedTime}>
-                      Expected Time: {formatTime(stop.departureTime)}
-                    </Text>
+                    {stop.hasScheduledTime ? (
+                      <Text style={styles.expectedTime}>
+                        Expected Time: {formatTime(stop.departureTime)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.noScheduleTime}>
+                        Expected time not available
+                      </Text>
+                    )}
                     <Text style={styles.kmInfo}> 
                       {stop.distanceFromStart} km from start
                     </Text>
@@ -561,7 +587,9 @@ export default function StopViewScreen() {
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>ETA Final</Text>
             <Text style={styles.summaryValue}>
-              {endStop ? formatTime(endStop.arrivalTime) : '--:--'}
+              {endStop && endStop.hasScheduledTime ? 
+                formatTime(endStop.arrivalTime) : 
+                'Not available'}
             </Text>
           </View>
         </View>
@@ -933,6 +961,12 @@ const styles = StyleSheet.create({
   expectedTime: {
     fontSize: 12,
     color: '#666',
+    marginBottom: 2,
+  },
+  noScheduleTime: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
     marginBottom: 2,
   },
   stopStatusContainer: {

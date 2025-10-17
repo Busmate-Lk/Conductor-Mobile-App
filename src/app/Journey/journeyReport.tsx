@@ -31,15 +31,15 @@ interface QRLog {
 function getStatusColor(status: string): string {
   switch (status) {
     case 'upcoming':
-      return '#F5A623'; // Orange
+      return '#F5A623'; 
     case 'ongoing':
-      return '#22C55E'; // Green
+      return '#22C55E'; 
     case 'completed':
-      return '#6B7280'; // Gray
+      return '#6B7280'; 
     case 'cancelled':
-      return '#EF4444'; // Red
+      return '#EF4444'; 
     default:
-      return '#6B7280'; // Gray
+      return '#6B7280'; 
   }
 }
 

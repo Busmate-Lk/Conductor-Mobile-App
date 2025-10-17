@@ -69,7 +69,7 @@ export function EmployeeScheduleProvider({ children }: EmployeeScheduleProviderP
        
       // Fetch schedules using conductor ID (which is user.id)
       const data = await employeeApi.getSchedule(String(user.id));
-      console.log(`🏠 Fetched ${data.length} schedules`);
+      console.log(` Fetched ${data.length} schedules`);
       
       // Transform API response to match EmployeeSchedule interface and add status
       const schedulesWithStatus: EmployeeSchedule[] = data.map((item: ConductorTripApiResponse) => {

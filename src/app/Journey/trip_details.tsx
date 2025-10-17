@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,52 +7,133 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import BusLayout from '../../components/Journey/BusLayout';
 import PassengerList from '../../components/Journey/PassengerList';
-
-// Trip data model
-interface TripData {
-  id: string;
-  route: string;
-  busNumber: string;
-  status: string;
-  departure: string;
-  arrival: string;
-  date: string;
-  passengers: number;
-  totalAmount: number;
-  cashAmount: number;
-  bookingAmount: number;
-  qrCodeAmount: number;
-}
+import { useEmployeeScheduleContext } from '../../contexts/EmployeeScheduleContext';
+import { EmployeeSchedule } from '../../types/employee';
 
 export default function TripDetailsScreen() {
   const [activeTab, setActiveTab] = useState<'seats' | 'passengers'>('seats');
-  
-  // Sample trip data
-  const tripData: TripData = {
-    id: 'J12345',
-    route: 'Colombo - Kandy',
-    busNumber: 'NC-1234',
-    status: 'Ongoing',
-    departure: '06:30 AM',
-    arrival: '09:45 AM',
-    date: 'Dec 15, 2024',
-    passengers: 48,
-    totalAmount: 12350,
-    cashAmount: 8200,
-    bookingAmount: 2850,
-    qrCodeAmount: 1300
+  const { schedules, loading, error } = useEmployeeScheduleContext();
+   const { id: tripId } = useLocalSearchParams<{ id: string }>();
+  const [tripData, setTripData] = useState<EmployeeSchedule | null>(null);
+
+  // Find the specific trip by ID
+  useEffect(() => {
+    if (tripId && schedules.length > 0) {
+      const trip = schedules.find(schedule => schedule.id === tripId);
+      setTripData(trip || null);
+      console.log('📋 Trip details loaded:', trip);
+    }
+  }, [tripId, schedules]);
+
+  // Helper function to format time from HH:MM:SS to readable format
+  const formatTime = (timeStr: string): string => {
+    try {
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours, 10);
+      const min = minutes;
+      const period = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      return `${displayHour}:${min} ${period}`;
+    } catch {
+      return timeStr;
+    }
   };
+
+  // Helper function to format date from YYYY-MM-DD to readable format
+  const formatDate = (dateStr: string): string => {
+    try {
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Get status color and text
+  const getStatusDisplay = (status: EmployeeSchedule['status']) => {
+    switch (status) {
+      case 'ongoing':
+        return { color: '#22C55E', text: 'Ongoing' };
+      case 'completed':
+        return { color: '#6B7280', text: 'Completed' };
+      case 'upcoming':
+        return { color: '#3B82F6', text: 'Upcoming' };
+      case 'pending':
+        return { color: '#F59E0B', text: 'Pending' };
+      case 'cancelled':
+        return { color: '#EF4444', text: 'Cancelled' };
+      default:
+        return { color: '#6B7280', text: 'Unknown' };
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066FF" />
+          <Text style={styles.loadingText}>Loading trip details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text style={styles.errorTitle}>Unable to Load Trip</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Trip not found
+  if (!tripData) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="bus-outline" size={64} color="#6B7280" />
+          <Text style={styles.errorTitle}>Trip Not Found</Text>
+          <Text style={styles.errorMessage}>
+            The requested trip could not be found. It may have been cancelled or updated.
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const statusDisplay = getStatusDisplay(tripData.status);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Header with back button and menu */}
+      {/* Header with back button */}
       {/* <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -93,7 +174,7 @@ export default function TripDetailsScreen() {
         </TouchableOpacity>
       </View>
       
-      {/* Content Container - Always full height to properly display tabs */}
+      {/* Content Container */}
       <View style={styles.contentContainer}>
         {activeTab === 'seats' ? (
           <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -101,28 +182,50 @@ export default function TripDetailsScreen() {
             <View style={styles.tripCard}>
               <View style={styles.routeContainer}>
                 <Text style={styles.routeName}>{tripData.route}</Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>{tripData.status}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: statusDisplay.color }]}>
+                  <Text style={styles.statusText}>{statusDisplay.text}</Text>
                 </View>
               </View>
               
-              <Text style={styles.busNumber}>Bus No: {tripData.busNumber}</Text>
+              <Text style={styles.busNumber}>Bus No: {tripData.busPlateNumber || tripData.busId}</Text>
+              
+              {/* Route Details */}
+              {tripData.fromLocation && tripData.toLocation && (
+                <View style={styles.routeDetails}>
+                  <View style={styles.locationRow}>
+                    <Ionicons name="location" size={16} color="#0066FF" />
+                    <Text style={styles.locationText}>From: {tripData.fromLocation}</Text>
+                  </View>
+                  <View style={styles.locationRow}>
+                    <Ionicons name="flag" size={16} color="#EF4444" />
+                    <Text style={styles.locationText}>To: {tripData.toLocation}</Text>
+                  </View>
+                </View>
+              )}
               
               <View style={styles.timeContainer}>
                 <View style={styles.timeColumn}>
                   <Text style={styles.timeLabel}>Departure</Text>
-                  <Text style={styles.timeValue}>{tripData.departure}</Text>
+                  <Text style={styles.timeValue}>{formatTime(tripData.startTime)}</Text>
                 </View>
                 <View style={styles.timeColumn}>
                   <Text style={styles.timeLabel}>Arrival</Text>
-                  <Text style={styles.timeValue}>{tripData.arrival}</Text>
+                  <Text style={styles.timeValue}>{formatTime(tripData.endTime)}</Text>
                 </View>
               </View>
               
               <View style={styles.dateContainer}>
                 <Text style={styles.dateLabel}>Date</Text>
-                <Text style={styles.dateValue}>{tripData.date}</Text>
+                <Text style={styles.dateValue}>{formatDate(tripData.date)}</Text>
               </View>
+
+              {/* Schedule Information */}
+              {tripData.scheduleName && (
+                <View style={styles.scheduleInfo}>
+                  <Text style={styles.scheduleLabel}>Schedule</Text>
+                  <Text style={styles.scheduleValue}>{tripData.scheduleName}</Text>
+                </View>
+              )}
             </View>
             
             {/* Stats Card */}
@@ -132,68 +235,57 @@ export default function TripDetailsScreen() {
                   <Text style={styles.statLabel}>Passengers</Text>
                   <View style={styles.statValueWrapper}>
                     <Text style={[styles.statValue, styles.passengerValue]}>
-                      {tripData.passengers}
+                      {tripData.passengers || 0}
                     </Text>
                     <Ionicons name="people" size={24} color="#0066FF" style={styles.statIcon} />
                   </View>
                 </View>
                 
                 <View style={[styles.statItem, styles.borderLeft]}>
-                  <Text style={styles.statLabel}>Amount</Text>
+                  <Text style={styles.statLabel}>Revenue</Text>
                   <View style={styles.statValueWrapper}>
                     <Text style={[styles.statValue, styles.amountValue]}>
-                      Rs. {tripData.totalAmount.toLocaleString()}
+                      Rs. {(tripData.revenue || 0).toLocaleString()}
                     </Text>
-                    <Ionicons name="document-text" size={24} color="#0066FF" style={styles.statIcon} />
+                    <Ionicons name="cash" size={24} color="#22C55E" style={styles.statIcon} />
                   </View>
                 </View>
               </View>
             </View>
-            
-            {/* Payment Breakdown Card */}
-            <View style={styles.paymentCard}>
-              <View style={styles.paymentRow}>
-                {/* Cash payment */}
-                <View style={styles.paymentItem}>
-                  <Ionicons name="cash-outline" size={24} color="#22C55E" style={styles.paymentIcon} />
-                  <Text style={styles.paymentLabel}>Cash</Text>
-                  <Text style={styles.paymentValue}>Rs. {tripData.cashAmount.toLocaleString()}</Text>
-                </View>
-                
-                {/* Booking payment */}
-                <View style={styles.paymentItem}>
-                  <Ionicons name="calendar" size={24} color="#0066FF" style={styles.paymentIcon} />
-                  <Text style={styles.paymentLabel}>Booking</Text>
-                  <Text style={styles.paymentValue}>Rs. {tripData.bookingAmount.toLocaleString()}</Text>
-                </View>
-                
-                {/* QR Code payment */}
-                <View style={styles.paymentItem}>
-                  <Ionicons name="qr-code" size={24} color="#F59E0B" style={styles.paymentIcon} />
-                  <Text style={styles.paymentLabel}>QR Code</Text>
-                  <Text style={styles.paymentValue}>Rs. {tripData.qrCodeAmount.toLocaleString()}</Text>
-                </View>
+
+            {/* Trip IDs Card (for debugging/reference) */}
+            <View style={styles.idsCard}>
+              <Text style={styles.idsTitle}>Trip Information</Text>
+              <View style={styles.idRow}>
+                <Text style={styles.idLabel}>Trip ID:</Text>
+                <Text style={styles.idValue}>{tripData.id}</Text>
               </View>
+              {tripData.scheduleId && (
+                <View style={styles.idRow}>
+                  <Text style={styles.idLabel}>Schedule ID:</Text>
+                  <Text style={styles.idValue}>{tripData.scheduleId}</Text>
+                </View>
+              )}
+              {tripData.RouteId && (
+                <View style={styles.idRow}>
+                  <Text style={styles.idLabel}>Route ID:</Text>
+                  <Text style={styles.idValue}>{tripData.RouteId}</Text>
+                </View>
+              )}
             </View>
             
             {/* Content Header */}
             <View style={styles.contentHeader}>
               <Text style={styles.contentTitle}>Bus Layout</Text>
-              
-              {/* Help Button */}
-              <TouchableOpacity style={styles.helpButton}>
-                <Ionicons name="help-circle" size={24} color="#666" />
-              </TouchableOpacity>
             </View>
             
-            {/* Bus Layout Component - Safe to include in ScrollView since it's static */}
+            {/* Bus Layout Component */}
             <BusLayout />
             
             {/* Extra padding at the bottom */}
             <View style={{height: 30}} />
           </ScrollView>
         ) : (
-          /* PassengerList Component - Has its own FlatList, so no ScrollView */
           <PassengerList tripId={tripData.id} />
         )}
       </View>
@@ -205,6 +297,50 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#0066FF',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
@@ -258,10 +394,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   contentContainer: {
-    flex: 1, // This ensures the content takes all available space
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20, // Add padding at the bottom for better scrolling
+    paddingBottom: 20,
   },
   tripCard: {
     backgroundColor: '#FFFFFF',
@@ -284,9 +420,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#333333',
+    flex: 1,
+    marginRight: 12,
   },
   statusBadge: {
-    backgroundColor: '#22C55E',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -300,6 +437,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     marginBottom: 16,
+  },
+  routeDetails: {
+    marginBottom: 16,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
   },
   timeContainer: {
     flexDirection: 'row',
@@ -319,7 +469,7 @@ const styles = StyleSheet.create({
     color: '#333333',
   },
   dateContainer: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   dateLabel: {
     fontSize: 14,
@@ -329,6 +479,19 @@ const styles = StyleSheet.create({
   dateValue: {
     fontSize: 16,
     color: '#333333',
+  },
+  scheduleInfo: {
+    marginBottom: 8,
+  },
+  scheduleLabel: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  scheduleValue: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
   },
   statsCard: {
     backgroundColor: '#FFFFFF',
@@ -366,7 +529,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   passengerValue: {
-    color: '#22C55E',
+    color: '#0066FF',
   },
   amountValue: {
     color: '#22C55E',
@@ -374,7 +537,7 @@ const styles = StyleSheet.create({
   statIcon: {
     marginLeft: 8,
   },
-  paymentCard: {
+  idsCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginHorizontal: 16,
@@ -386,26 +549,25 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  paymentRow: {
+  idsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  idRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  paymentItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  paymentIcon: {
-    marginBottom: 4,
-  },
-  paymentLabel: {
+  idLabel: {
     fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
+    color: '#666',
   },
-  paymentValue: {
+  idValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
+    color: '#333',
+    fontFamily: 'monospace',
   },
   contentHeader: {
     flexDirection: 'row',

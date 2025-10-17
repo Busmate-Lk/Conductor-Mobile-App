@@ -22,7 +22,7 @@ export default function TicketPrintingScreen() {
     // Start progress animation
     Animated.timing(progressAnimation, {
       toValue: 1,
-      duration: 5000,
+      duration: 1000,
       useNativeDriver: false,
     }).start();
     
@@ -36,7 +36,7 @@ export default function TicketPrintingScreen() {
           // Navigate to confirmation screen after completion
           setTimeout(() => {
             router.replace('/Ticket/ticketIssuePage');
-          }, 500);
+          }, 100);
           return 1;
         }
         return newProgress;
@@ -53,7 +53,7 @@ export default function TicketPrintingScreen() {
   });
 
   // Calculate progress bar color based on completion
-  const progressBarColor = progress >= 1 ? '#00FF00' : '#FFFFFF'; // Green when 100%, white otherwise
+  const progressBarColor = progress >= 1 ? '#00FF00' : '#FFFFFF'; 
 
   return (
     <SafeAreaView style={styles.container}>

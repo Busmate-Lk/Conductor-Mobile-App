@@ -35,7 +35,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
         {
           text: 'OK',
           onPress: () => {
-            // Stay on journey page, it will automatically update to show no ongoing trip
+            
           }
         }
       ]);
@@ -44,7 +44,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
     }
   };
 
-  // Show end confirmation popup
+ 
   const showEndTripConfirmation = () => {
     setShowEndModal(true);
   };

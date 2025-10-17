@@ -1,6 +1,5 @@
 import { TicketDetails, useTicket } from '@/contexts/TicketContext';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
@@ -8,7 +7,6 @@ import * as Sharing from 'expo-sharing';
 import React from 'react';
 import {
   Alert,
-  Image,
   Platform,
   SafeAreaView,
   Share,
@@ -263,36 +261,33 @@ export default function TicketConfirmationScreen() {
             const { status } = await MediaLibrary.requestPermissionsAsync();
             
             if (status === 'granted') {
-              const downloadPath = `${FileSystem.documentDirectory}${filename}`;
-              await FileSystem.copyAsync({
-                from: uri,
-                to: downloadPath,
-              });
+              // Try to save to media library directly
+              const asset = await MediaLibrary.createAssetAsync(uri);
+              const album = await MediaLibrary.getAlbumAsync('Download');
+              if (album == null) {
+                await MediaLibrary.createAlbumAsync('Download', asset, false);
+              } else {
+                await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+              }
 
               Alert.alert(
                 'Download Complete!',
-                `Ticket saved as: ${filename}`,
-                [
-                  { text: 'OK' }
-                ]
+                `Ticket saved to Downloads folder as: ${filename}`,
+                [{ text: 'OK' }]
               );
             } else {
               Alert.alert(
                 'PDF Generated!',
                 'Your ticket PDF has been created. Please use the share option to save or send it.',
-                [
-                  { text: 'OK' }
-                ]
+                [{ text: 'OK' }]
               );
             }
           } catch (saveError) {
             console.log('Save error:', saveError);
             Alert.alert(
-              'PDF Generated!',
-              'Your ticket PDF has been created successfully.',
-              [
-                { text: 'OK' }
-              ]
+              'PDF Generated Successfully!',
+              'Your ticket PDF has been created. You can access it through the share menu above.',
+              [{ text: 'OK' }]
             );
           }
         }
@@ -418,25 +413,32 @@ export default function TicketConfirmationScreen() {
           {/* Ticket Body */}
           <View style={styles.ticketBody}>
             {/* From - To */}
-            <View style={styles.journeyRow}>
+            <View>
+              {/* From row with bus indicator centered */}
+              <View style={styles.journeyRow}>
               <View>
                 <Text style={styles.journeyLabel}>FROM</Text>
                 <Text style={styles.journeyLocation}>{ticket.from}</Text>
-                <Text style={styles.journeyDetail}>{ticket.platform}</Text>
+                {/* <Text style={styles.journeyDetail}>{ticket.platform}</Text> */}
               </View>
               <View style={styles.journeyMiddle}>
                 <View style={styles.journeyLine}>
-                  <View style={styles.journeyDot} />
-                  <View style={styles.journeyBus}>
-                    <FontAwesome5 name="bus" size={14} color="#0066FF" />
-                  </View>
-                  <View style={styles.journeyDot} />
+                <View style={styles.journeyDot} />
+                <View style={styles.journeyBus}>
+                  <FontAwesome5 name="bus" size={14} color="#0066FF" />
+                </View>
+                <View style={styles.journeyDot} />
                 </View>
               </View>
-              <View style={styles.journeyDestination}>
-                <Text style={styles.journeyLabel}>TO</Text>
-                <Text style={styles.journeyLocation}>{ticket.to}</Text>
-                <Text style={styles.journeyDetail}>{ticket.gate}</Text>
+              {/* placeholder to keep spacing consistent */}
+              <View style={{ width: 48 }} />
+              </View>
+
+              {/* To section placed below the From row */}
+              <View style={{ marginTop: 8 }}>
+              <Text style={styles.journeyLabel}>TO</Text>
+              <Text style={styles.journeyLocation}>{ticket.to}</Text>
+              {/* <Text style={styles.journeyDetail}>{ticket.gate}</Text> */}
               </View>
             </View>
             
@@ -464,13 +466,10 @@ export default function TicketConfirmationScreen() {
             
             {/* QR Code */}
             <View style={styles.qrContainer}>
-              <Image 
-                source={require('@/assets/images/qr-code.svg')}
-                style={styles.qrCode}
-                resizeMode="contain"
-                // If you don't have an image, use a placeholder or implement a QR library
-                // defaultSource={require('@/assets/images/qr-placeholder.png')}
-              />
+              <View style={styles.qrPlaceholder}>
+                <Text style={styles.qrPlaceholderText}>QR CODE</Text>
+                <Text style={styles.qrPlaceholderId}>{ticket.id}</Text>
+              </View>
               <Text style={styles.qrText}>Scan QR Code for Validation</Text>
             </View>
           </View>
@@ -704,6 +703,30 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     marginBottom: 8,
+  },
+  qrPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  qrPlaceholderText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  qrPlaceholderId: {
+    fontSize: 10,
+    color: '#444',
+    marginTop: 6,
+    textAlign: 'center',
   },
   qrText: {
     fontSize: 14,

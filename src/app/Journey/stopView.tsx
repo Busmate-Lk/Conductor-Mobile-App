@@ -113,7 +113,7 @@ export default function StopViewScreen() {
       setCurrentStopIndex(currentIndex >= 0 ? currentIndex : 0);
       
     } catch (err) {
-      console.error('❌ Error fetching stops:', err);
+      console.error(' Error fetching stops:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unable to load stop information';
       setError(errorMessage);
       setStops([]); // Clear any existing stops

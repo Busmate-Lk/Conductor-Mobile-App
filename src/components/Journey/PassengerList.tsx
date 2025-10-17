@@ -119,14 +119,14 @@ export default function PassengerList({ tripId }: PassengerListProps) {
             <Ionicons name="bus" size={24} color="#0066FF" />
           </View>
           <View>
-            <Text style={styles.tripIdText}>Trip #{tripSummary.id}</Text>
-            <Text style={styles.passengerCountText}>{tripSummary.totalPassengers} passengers</Text>
+            {/* <Text style={styles.tripIdText}>Trip #{tripSummary.id}</Text> */}
+            <Text style={styles.passengerCountText}>  {tripSummary.totalPassengers} passengers Booked their  Seats </Text>
           </View>
         </View>
         
         <View style={styles.tripSummaryRight}>
-          <Text style={styles.validatedText}>{tripSummary.validatedPassengers} Validated</Text>
-          <Text style={styles.pendingText}>{tripSummary.pendingPassengers} Pending</Text>
+          {/* <Text style={styles.validatedText}>{tripSummary.validatedPassengers} Validated</Text>
+          <Text style={styles.pendingText}>{tripSummary.pendingPassengers} Pending</Text> */}
         </View>
       </View>
       

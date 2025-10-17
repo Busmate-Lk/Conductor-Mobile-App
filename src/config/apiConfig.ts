@@ -1,7 +1,7 @@
 // Service configuration for different API endpoints
 export const API_CONFIG = {
   USER_MANAGEMENT: {
-    baseURL: process.env.EXPO_PUBLIC_USER_API_URL || 'http://18.140.161.237:8081/api',
+    baseURL: process.env.EXPO_PUBLIC_USER_API_URL || 'http://107.21.189.199:8081/api',
     timeout: 15000,
   },
   SCHEDULE_MANAGEMENT: {

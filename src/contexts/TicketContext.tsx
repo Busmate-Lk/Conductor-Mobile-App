@@ -24,6 +24,19 @@ export interface QRScanLog {
   status: 'success' | 'failed';
 }
 
+// Cash Ticket Log interface
+export interface CashTicketLog {
+  id: string;
+  ticketId: string;
+  fromLocation: string;
+  toLocation: string;
+  passengerCount: number;
+  fareAmount: number;
+  paymentMethod: string;
+  issuedTime: Date;
+  phoneNumber?: string;
+}
+
 interface TicketContextType {
   ticketData: TicketDetails | null;
   setTicketData: (ticket: TicketDetails) => void;
@@ -42,6 +55,11 @@ interface TicketContextType {
   addQRScanLog: (log: QRScanLog) => void;
   clearQRScanLogs: () => void;
   getQRScanLogsForTrip: (tripId?: string) => QRScanLog[];
+  // Cash Ticket logs
+  cashTicketLogs: CashTicketLog[];
+  addCashTicketLog: (log: CashTicketLog) => void;
+  clearCashTicketLogs: () => void;
+  getCashTicketLogsForTrip: (tripId?: string) => CashTicketLog[];
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -51,6 +69,7 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [ticketBackendData, setTicketBackendData] = useState<IssueTicketRequest | null>(null);
   const [routeStopsCache, setRouteStopsCache] = useState<RouteStopsCache | null>(null);
   const [qrScanLogs, setQrScanLogs] = useState<QRScanLog[]>([]);
+  const [cashTicketLogs, setCashTicketLogs] = useState<CashTicketLog[]>([]);
 
   const clearTicketData = () => {
     setTicketData(null);
@@ -75,6 +94,19 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const getQRScanLogsForTrip = (tripId?: string): QRScanLog[] => {
     // For now, return all logs. In the future, you can filter by tripId
     return qrScanLogs;
+  };
+
+  const addCashTicketLog = (log: CashTicketLog) => {
+    setCashTicketLogs(prevLogs => [log, ...prevLogs]);
+  };
+
+  const clearCashTicketLogs = () => {
+    setCashTicketLogs([]);
+  };
+
+  const getCashTicketLogsForTrip = (tripId?: string): CashTicketLog[] => {
+    // For now, return all logs. In the future, you can filter by tripId
+    return cashTicketLogs;
   };
 
   // Check if cache is valid (same route and within 30 minutes)
@@ -104,7 +136,11 @@ export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       qrScanLogs,
       addQRScanLog,
       clearQRScanLogs,
-      getQRScanLogsForTrip
+      getQRScanLogsForTrip,
+      cashTicketLogs,
+      addCashTicketLog,
+      clearCashTicketLogs,
+      getCashTicketLogsForTrip
     }}>
       {children}
     </TicketContext.Provider>

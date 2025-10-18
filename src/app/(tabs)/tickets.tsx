@@ -1,4 +1,4 @@
-import { useTicket } from '@/contexts/TicketContext';
+import { useTicket, CashTicketLog } from '@/contexts/TicketContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -27,7 +27,8 @@ export default function TicketsScreen() {
     setTicketBackendData,
     routeStopsCache, 
     setRouteStopsCache, 
-    isRouteStopsCacheValid 
+    isRouteStopsCacheValid,
+    addCashTicketLog 
   } = useTicket();
   const { user } = useAuth();
   const { ongoingTrip } = useOngoingTrip();
@@ -248,11 +249,28 @@ export default function TicketsScreen() {
       transactionRef: `TXN-${Date.now()}-${ticketId}`
     };
 
+    // Create cash ticket log for journey report integration
+    const cashTicketLog: CashTicketLog = {
+      id: ticketId,
+      ticketId: ticketId,
+      fromLocation: fromLocation,
+      toLocation: toLocation,
+      passengerCount: passengerCount,
+      fareAmount: totalFare,
+      paymentMethod: paymentMethod,
+      issuedTime: new Date(),
+      phoneNumber: phoneNumber
+    };
+
     // Store both display and backend data using context
     setTicketData(ticketData);
     setTicketBackendData(backendData);
+    
+    // Add to cash ticket logs for journey report
+    addCashTicketLog(cashTicketLog);
 
     console.log('🎫 Ticket created with backend data:', backendData);
+    console.log('💰 Cash ticket log added:', cashTicketLog);
   };
 
   return (

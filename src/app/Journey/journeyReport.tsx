@@ -1,4 +1,4 @@
-import { useTicket } from '@/contexts/TicketContext';
+import { useTicket, QRScanLog, CashTicketLog } from '@/contexts/TicketContext';
 import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -50,17 +50,22 @@ function getStatusDisplayText(status: string): string {
 
 export default function TripReportScreen() {
   const { ongoingTrip, endTrip, endingTrip } = useOngoingTrip();
-  const { qrScanLogs, getQRScanLogsForTrip } = useTicket();
+  const { qrScanLogs, getQRScanLogsForTrip, cashTicketLogs, getCashTicketLogsForTrip } = useTicket();
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
 
-  // Get QR scan logs for this trip
+  // Get QR scan logs and cash ticket logs for this trip
   const tripQRLogs = getQRScanLogsForTrip();
+  const tripCashTickets = getCashTicketLogsForTrip();
   
   // Calculate QR revenue from successful scans
   const qrRevenue = tripQRLogs
     .filter(log => log.status === 'success')
     .reduce((total, log) => total + log.ticketFee, 0);
+    
+  // Calculate cash revenue from physical tickets
+  const cashRevenue = tripCashTickets
+    .reduce((total, ticket) => total + ticket.fareAmount, 0);
 
   // If no ongoing trip, show message
   if (!ongoingTrip) {
@@ -96,15 +101,19 @@ export default function TripReportScreen() {
       status: ongoingTrip.status
     },
     summary: {
-      totalPassengers: tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.passengerCount, 0),
-      ticketsIssued: tripQRLogs.filter(log => log.status === 'success').length,
+      totalPassengers: 
+        tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.passengerCount, 0) +
+        tripCashTickets.reduce((total, ticket) => total + ticket.passengerCount, 0),
+      ticketsIssued: 
+        tripQRLogs.filter(log => log.status === 'success').length + 
+        tripCashTickets.length,
       qrRevenue: qrRevenue,
-      cashRevenue: ongoingTrip.revenue || 0,
+      cashRevenue: cashRevenue,
       duration: calculateTripDuration(ongoingTrip.startTime, ongoingTrip.endTime)
     },
     qrLogs: tripQRLogs,
     totalQrLogs: tripQRLogs.length,
-    totalRevenue: (ongoingTrip.revenue || 0) + qrRevenue
+    totalRevenue: cashRevenue + qrRevenue
   };
 
   // Calculate trip duration
@@ -263,14 +272,16 @@ export default function TripReportScreen() {
             {/* QR Revenue */}
             <View style={[styles.statCard, { backgroundColor: '#FFF8E6' }]}>
               <MaterialCommunityIcons name="qrcode-scan" size={22} color="#F5A623" />
-              <Text style={styles.statValue}>Rs. {tripData.summary.qrRevenue.toLocaleString()}.00</Text>
+              <Text style={styles.statValue}>Rs. {tripData.summary.qrRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               <Text style={styles.statLabel}>QR Revenue</Text>
             </View>
 
             {/* Cash Revenue */}
             <View style={[styles.statCard, { backgroundColor: '#F5EEFF' }]}>
               <MaterialIcons name="attach-money" size={22} color="#7C3AED" />
-              <Text style={styles.statValue}>Rs. {tripData.summary.cashRevenue.toLocaleString()}</Text>
+              <Text style={styles.statValue}>
+                Rs. {tripData.summary.cashRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
               <Text style={styles.statLabel}>Cash Revenue</Text>
             </View>
           </View>

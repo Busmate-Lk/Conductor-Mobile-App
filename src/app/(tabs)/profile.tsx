@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
@@ -16,6 +17,7 @@ import {
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { ongoingTrip } = useOngoingTrip();
 
   const handleLogout = () => {
     Alert.alert(
@@ -39,15 +41,20 @@ export default function ProfileScreen() {
     );
   };
 
-  // Use auth context data with fallbacks
+  // Use auth context data with ongoing trip data and fallbacks
   const userInfo = {
     fullName: user?.fullName || user?.name || "Conductor Name",
     conductorId: user?.employeeId || "CON-2024-001",
     email: user?.email || "conductor@busmate.lk",
     contactNumber: user?.contactNumber || "+94 77 123 4567",
     role: user?.role || "conductor",
-    busId: user?.busId || "NB-2845",
-    route: user?.route || "Colombo - Kandy"
+    busId: ongoingTrip?.busId || ongoingTrip?.busPlateNumber || user?.busId || "NB-2845",
+    route: ongoingTrip?.routeName || 
+           (ongoingTrip?.fromLocation && ongoingTrip?.toLocation ? 
+            `${ongoingTrip.fromLocation} - ${ongoingTrip.toLocation}` : null) ||
+           ongoingTrip?.route || 
+           user?.route || 
+           "Colombo - Kandy"
   };
 
   return (
@@ -132,6 +139,11 @@ export default function ProfileScreen() {
             <View style={styles.fieldContainer}>
               <Ionicons name="bus" size={22} color="#999" style={styles.fieldIcon} />
               <Text style={styles.fieldText}>{userInfo.busId}</Text>
+              {ongoingTrip && (
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>Active</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -140,6 +152,11 @@ export default function ProfileScreen() {
             <View style={styles.fieldContainer}>
               <Ionicons name="map" size={22} color="#999" style={styles.fieldIcon} />
               <Text style={styles.fieldText}>{userInfo.route}</Text>
+              {ongoingTrip && (
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>Ongoing</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -306,6 +323,19 @@ const styles = StyleSheet.create({
   fieldText: {
     fontSize: 16,
     color: '#333',
+    flex: 1,
+  },
+  statusBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  statusText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   editButton: {
     backgroundColor: '#0066FF',

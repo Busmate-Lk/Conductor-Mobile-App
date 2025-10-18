@@ -237,17 +237,48 @@ export default function TicketsScreen() {
     const fromStop = routeStops.find(stop => stop.stopName === fromLocation);
     const toStop = routeStops.find(stop => stop.stopName === toLocation);
 
-    // Create backend data for API
-    const backendData: IssueTicketRequest = {
-      conductorId:2222222222222222222,
-      busId: 1111111111111111111111,
-      tripId: 2234455555,
-      startLocationId: fromStop?.stopId || 'unknown',
-      endLocationId: toStop?.stopId || 'unknown',
-      fareAmount: totalFare,
-      paymentMethod: paymentMethod,
-      transactionRef: `TXN-${Date.now()}-${ticketId}`
-    };
+    if (!user?.id || !ongoingTrip?.id || !ongoingTrip?.busId) {
+    console.error('❌ Missing required data:', {
+      userId: user?.id,
+      tripId: ongoingTrip?.id,
+      busId: ongoingTrip?.busId
+    });
+    alert('Error: Missing trip or user information. Please try again.');
+    return;
+  }
+
+  // Create backend data for API - all IDs as strings to match backend DTO
+  const backendData: IssueTicketRequest = {
+    // conductorId: user.id.toString(),
+    conductorId: user.id.toString(),
+    busId: ongoingTrip.busId.toString(),
+    tripId: ongoingTrip.id.toString(),
+    startLocationId: fromStop?.stopId || 'unknown',
+    endLocationId: toStop?.stopId || 'unknown',
+    fareAmount: parseFloat(totalFare.toFixed(2)),
+    paymentMethod: paymentMethod,
+    transactionRef: `TXN-${Date.now()}-${ticketId}`
+  };
+
+    console.log('🎫 Backend data validation:', {
+      conductorId: backendData.conductorId,
+      busId: backendData.busId,
+      tripId: backendData.tripId,
+      startLocationId: backendData.startLocationId,
+      endLocationId: backendData.endLocationId,
+      fareAmount: backendData.fareAmount,
+      paymentMethod: backendData.paymentMethod,
+      transactionRef: backendData.transactionRef
+    });
+
+    console.log('🔍 User and trip context:', {
+      userId: user?.id,
+      userType: typeof user?.id,
+      ongoingTripId: ongoingTrip?.id,
+      ongoingTripBusId: ongoingTrip?.busId,
+      fromStopId: fromStop?.stopId,
+      toStopId: toStop?.stopId
+    });
 
     // Create cash ticket log for journey report integration
     const cashTicketLog: CashTicketLog = {
@@ -398,7 +429,7 @@ export default function TicketsScreen() {
         </View>
 
         {/* Phone Number */}
-        <View style={styles.inputGroup}>
+        {/* <View style={styles.inputGroup}>
           <Text style={styles.label}>Passenger Phone Number (Optional)</Text>
           <View style={styles.phoneInputContainer}>
             <TextInput
@@ -410,7 +441,7 @@ export default function TicketsScreen() {
             />
             <Ionicons name="call-outline" size={24} color="#999" style={styles.phoneIcon} />
           </View>
-        </View>
+        </View> */}
 
         {/* Issue Ticket Button */}
         <TouchableOpacity

@@ -1,8 +1,8 @@
 // API request types for backend integration
 export interface IssueTicketRequest {
-  conductorId: number;
-  busId:number;
-  tripId: number;
+  conductorId: String;
+  busId:String;
+  tripId: String;
   startLocationId: string;
   endLocationId: string;
   fareAmount: number;

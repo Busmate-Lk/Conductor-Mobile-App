@@ -20,10 +20,7 @@ export const employeeApi = {
     }, 'user');
   },
 
-
-
-
-
+  
 // Fetch employee schedule by conductorId - Schedule Management Service
   getSchedule: async (conductorId: string): Promise<ConductorTripApiResponse[]> => {
     return apiClient.authenticatedRequest<ConductorTripApiResponse[]>(`/trips/conductor/${conductorId}`, {}, 'schedule');

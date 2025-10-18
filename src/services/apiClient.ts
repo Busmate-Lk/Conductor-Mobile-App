@@ -70,17 +70,84 @@ class ApiClient {
         const response = await fetch(fullUrl, config);
         clearTimeout(timeoutId);
 
+        console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+        console.log(`📋 Response content-type: ${response.headers.get('content-type')}`);
+
         if (!response.ok) {
+          // Try to get error message from response
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          let errorDetails = '';
+          
+          try {
+            const contentType = response.headers.get('content-type');
+            console.log(`📋 Error response content-type: ${contentType}`);
+            
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              errorMessage = errorData.message || errorData.error || errorMessage;
+              console.log('📋 JSON error response:', errorData);
+            } else {
+              // If it's not JSON, get the text content
+              const errorText = await response.text();
+              console.log('📄 Non-JSON error response:', errorText.substring(0, 500));
+              
+              // For 403 errors, provide more specific message
+              if (response.status === 403) {
+                errorMessage = 'Permission denied - Authentication or authorization failed';
+                errorDetails = errorText.substring(0, 200);
+              } else {
+                errorMessage = `HTTP ${response.status}: Server returned non-JSON response`;
+                errorDetails = errorText.substring(0, 200);
+              }
+            }
+          } catch (parseError) {
+            console.log('⚠️ Could not parse error response:', parseError);
+            if (response.status === 403) {
+              errorMessage = 'Permission denied - Invalid credentials or insufficient permissions';
+            }
+          }
+          
           if (response.status === 401) {
-            // Token expired, could trigger logout here
             throw new Error('UNAUTHORIZED');
           }
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          
+          const finalError = errorDetails ? `${errorMessage}. Details: ${errorDetails}` : errorMessage;
+          throw new Error(finalError);
         }
 
-        const result = await response.json();
-        console.log('✅ Request completed successfully:', fullUrl, `(Service: ${serviceType})`);
-        return result;
+        // Handle different content types
+        const contentType = response.headers.get('content-type') || '';
+        
+        if (contentType.includes('application/json')) {
+          const data = await response.json();
+          console.log('✅ Request completed successfully:', fullUrl, `(Service: ${serviceType})`);
+          return data;
+        } else if (contentType.includes('text/plain')) {
+          const text = await response.text();
+          console.log('📄 Text response:', text);
+          
+          // If it's a success message in plain text, return it
+          if (text.toLowerCase().includes('success') || text.toLowerCase().includes('issued')) {
+            console.log('✅ Request completed successfully (text response):', fullUrl, `(Service: ${serviceType})`);
+            return { success: true, message: text } as T;
+          } else {
+            throw new Error(`Unexpected text response: ${text}`);
+          }
+        } else {
+          // For any other content type, try to get the response as text for debugging
+          const textResponse = await response.text();
+          console.log('⚠️ Unexpected content type:', contentType, 'Response:', textResponse.substring(0, 200));
+          
+          // If the text contains success indicators, treat it as success
+          if (textResponse.toLowerCase().includes('success') || 
+              textResponse.toLowerCase().includes('issued') || 
+              textResponse.toLowerCase().includes('created')) {
+            console.log('✅ Request completed successfully (unknown content type but success message):', fullUrl, `(Service: ${serviceType})`);
+            return { success: true, message: textResponse } as T;
+          } else {
+            throw new Error(`Server returned unexpected content type: ${contentType}. Response: ${textResponse.substring(0, 100)}`);
+          }
+        }
       } catch (error) {
         clearTimeout(timeoutId);
         console.log('❌ Request failed:', fullUrl, `(Service: ${serviceType})`, error);
@@ -110,8 +177,9 @@ class ApiClient {
     const normalizedEndpoint = endpoint.replace(/^\/+/g, '');  // remove leading slashes
     const fullUrl = `${normalizedBase}/${normalizedEndpoint}`;
     
-    console.log(' Making authenticated API request to:', fullUrl, `(Service: ${serviceType})`);
-    console.log(' Request options:', JSON.stringify(options, null, 2));
+    console.log('🔐 Making authenticated API request to:', fullUrl, `(Service: ${serviceType})`);
+    console.log('📋 Request options:', JSON.stringify(options, null, 2));
+    
     const token = await this.getAuthToken();
     
     if (!token) {
@@ -120,6 +188,9 @@ class ApiClient {
     }
 
     console.log('🎫 Token exists, length:', token.length);
+    
+    // Log first few characters of token for debugging (safely)
+    console.log('🔑 Token preview:', token.substring(0, 20) + '...');
 
     return this.request<T>(endpoint, {
       ...options,

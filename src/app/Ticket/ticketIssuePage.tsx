@@ -1,4 +1,5 @@
 import { useTicket } from '@/contexts/TicketContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { ticketApi } from '@/services/api/ticket';
 import { TicketDetails } from '@/types/ticket';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import {
 
 export default function TicketConfirmationScreen() {
   const { ticketData, ticketBackendData } = useTicket();
+  const { user } = useAuth();
   const [isStoring, setIsStoring] = useState(false);
   const [storageStatus, setStorageStatus] = useState<'pending' | 'success' | 'error'>('pending');
 
@@ -46,7 +48,25 @@ export default function TicketConfirmationScreen() {
         return;
       }
 
-      console.log('💾 Storing ticket to database...', ticketBackendData);
+      console.log('💾 Storing ticket to database...', JSON.stringify(ticketBackendData, null, 2));
+      console.log('🔍 Backend data validation:', {
+        hasData: !!ticketBackendData,
+        conductorId: ticketBackendData.conductorId,
+        busId: ticketBackendData.busId,
+        tripId: ticketBackendData.tripId,
+        startLocationId: ticketBackendData.startLocationId,
+        endLocationId: ticketBackendData.endLocationId,
+        fareAmount: ticketBackendData.fareAmount,
+        paymentMethod: ticketBackendData.paymentMethod,
+        transactionRef: ticketBackendData.transactionRef
+      });
+      
+      console.log('👤 Current user context:', {
+        userId: user?.id,
+        userRole: user?.role,
+        isLoggedIn: !!user
+      });
+      
       setIsStoring(true);
 
       try {
@@ -56,17 +76,35 @@ export default function TicketConfirmationScreen() {
           console.log('✅ Ticket successfully stored:', result.message);
           setStorageStatus('success');
         } else {
-          console.error('Failed to store ticket:', result.message);
+          console.error('❌ Failed to store ticket:', result.error, '-', result.message);
           setStorageStatus('error');
+          
+          // Show user-friendly error message based on error type
+          setTimeout(() => {
+            Alert.alert(
+              'Ticket Issue Warning',
+              result.message || 'Failed to sync ticket with server. The ticket was generated locally.',
+              [{ text: 'OK' }]
+            );
+          }, 1000); // Delay to let UI render first
         }
-      } catch (error) {
-        console.error(' Error storing ticket:', error);
+      } catch (error: any) {
+        console.error('💥 Unexpected error storing ticket:', error);
         setStorageStatus('error');
+        
+        // Show generic error for unexpected issues
+        setTimeout(() => {
+          Alert.alert(
+            'Connection Error',
+            'Could not connect to server. The ticket was generated locally but may not be synced.',
+            [{ text: 'OK' }]
+          );
+        }, 1000);
       } finally {
         setIsStoring(false);
       }
     };
-
+    
     storeTicketToDatabase();
   }, [ticketBackendData]);
 

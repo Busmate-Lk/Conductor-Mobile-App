@@ -41,12 +41,12 @@ export default function TicketLogsScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0066FF" translucent={false} />
       
       {/* Header */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Ticket Logs</Text>
-      </View>
+      </View> */}
       
       <ScrollView style={styles.container}>
         {/* Summary Cards */}

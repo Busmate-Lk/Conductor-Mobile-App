@@ -173,12 +173,14 @@ export default function EmployeeScheduleCard({ item }: Props) {
               disabled={true}
             >
               <Text style={styles.successButtonText}>Trip Started</Text>
+              
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
+              // onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
+              onPress={() => router.push(`/(tabs)/journey`)}
             >
-              <Text style={styles.secondaryButtonText}>Trip Details</Text>
+              <Text style={styles.secondaryButtonText}>Go to Journey</Text>
             </TouchableOpacity>
           </>
         )}

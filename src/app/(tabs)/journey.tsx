@@ -43,8 +43,8 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
     // Validated tickets (QR scanned and validated)
     validatedTickets: tripQRLogs.filter(log => log.status === 'success').length,
     
-    // Pending tickets (keeping as dummy for now as requested)
-    pendingTickets: stats?.bookedNotValidated || 0,
+    // Pending tickets (start at 10, decrease by 1 for each validated QR ticket)
+    pendingTickets: Math.max(0, 10 - tripQRLogs.filter(log => log.status === 'success').length),
     
     // Total revenue from both sources
     totalRevenue: 
@@ -182,7 +182,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
         
         <View style={styles.summaryGrid}>
           {/* Total Passenger Count - Dynamic from QR + Physical tickets */}
-          <View style={[styles.summaryItem, {backgroundColor: '#F0F6FF'}]}>
+          <View style={[styles.summaryItem, styles.summaryItemThreeColumn, {backgroundColor: '#F0F6FF'}]}>
             <View style={styles.summaryIconContainer}>
               <Ionicons name="people" size={20} color="#0066FF" />
             </View>
@@ -191,7 +191,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
           </View>
           
           {/* Validated Tickets - Dynamic from QR scans */}
-          <View style={[styles.summaryItem, {backgroundColor: '#F0FFF6'}]}>
+          <View style={[styles.summaryItem, styles.summaryItemThreeColumn, {backgroundColor: '#F0FFF6'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
               <Ionicons name="receipt-outline" size={20} color="#00CC66" />
             </View>
@@ -199,17 +199,8 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
             <Text style={styles.summaryLabel}>Validated QR Tickets</Text>
           </View>
           
-          {/* Pending Tickets - Keeping as dummy for now */}
-          <View style={[styles.summaryItem, {backgroundColor: '#FFFBF0'}]}>
-            <View style={[styles.summaryIconContainer, {backgroundColor: '#FFF8E6'}]}>
-              <MaterialIcons name="pending" size={20} color="#FF9500" />
-            </View>
-            <Text style={styles.summaryValue}>{dynamicStats.pendingTickets}</Text>
-            <Text style={styles.summaryLabel}>Pending Tickets</Text>
-          </View>
-          
           {/* Total Revenue - Dynamic from both sources */}
-          <View style={[styles.summaryItem, {backgroundColor: '#F9F0FF'}]}>
+          <View style={[styles.summaryItem, styles.summaryItemThreeColumn, {backgroundColor: '#F9F0FF'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
               <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
             </View>
@@ -609,6 +600,10 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     alignItems: 'center',
+  },
+  summaryItemThreeColumn: {
+    width: '31%',
+    marginHorizontal: '1%',
   },
   summaryIconContainer: {
     width: 40,

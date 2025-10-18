@@ -17,7 +17,7 @@ interface SeatData {
 export default function BusLayout() {
   // Seat data - in a real app, you would fetch this from an API
   const seatData: SeatData = {
-    'A1': 1, 'A2': 2, 'A3': 0, 'A4': 1, 'A5': 0,
+    'A1': 0, 'A2': 2, 'A3': 0, 'A4': 1, 'A5': 0,
     'B1': 1, 'B2': 1, 'B3': 2, 'B4': 0, 'B5': 1,
     'C1': 3, 'C2': 1, 'C3': 1, 'C4': 2, 'C5': 0,
     'D1': 1, 'D2': 0, 'D3': 1, 'D4': 1, 'D5': 2,
@@ -155,7 +155,7 @@ export default function BusLayout() {
 }
 
 const { width } = Dimensions.get('window');
-const SEAT_WIDTH = (width - 45 - 20 - 16) / 5; // (Screen width - padding - aisle - gap between seats) / number of seats per row
+const SEAT_WIDTH = (width - 45 - 20 - 16) / 5; 
 
 const styles = StyleSheet.create({
   container: {

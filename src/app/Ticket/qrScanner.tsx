@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Dimensions,
-  Alert,
-  ScrollView
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { QRScanLog, useTicket } from '../../contexts/TicketContext';
 
 // Define types for scan history items
 interface ScanHistoryItem {
@@ -41,6 +42,9 @@ interface PassengerDetails {
 }
 
 export default function QRScannerScreen() {
+  // Get ticket context
+  const { qrScanLogs, addQRScanLog } = useTicket();
+  
   // Camera permission state using the new hooks
   const [permission, requestPermission] = useCameraPermissions();
   
@@ -52,26 +56,22 @@ export default function QRScannerScreen() {
   // Passenger details state
   const [passengerDetails, setPassengerDetails] = useState<PassengerDetails | null>(null);
   
-  // Scan history
-  const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>([
-    {
-      id: '1',
-      name: 'John Smith',
-      start: 'Colombo Fort',
-      end: 'Kandy',
-      seatNumber: '12A',
-      passengerCount: 1,
-      ticketFee: 100.00,
-      status: 'success',
-      timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 mins ago
-      ticketId: 'TK20250612-001'
-    },
-    {
-      id: '2',
-      status: 'failed',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 mins ago
-    }
-  ]);
+  // Store the raw QR data for validation
+  const [pendingQRData, setPendingQRData] = useState<string | null>(null);
+  
+  // Use recent scans from context instead of local state
+  const recentScans = qrScanLogs.slice(0, 10).map(log => ({
+    id: log.id,
+    name: log.name,
+    start: log.startStation,
+    end: log.endStation,
+    seatNumber: log.seatNumber,
+    passengerCount: log.passengerCount,
+    ticketFee: log.ticketFee,
+    status: log.status,
+    timestamp: log.scanTime,
+    ticketId: log.ticketId
+  }));
 
   // Request camera permissions if not already granted
   useEffect(() => {
@@ -93,9 +93,9 @@ export default function QRScannerScreen() {
       try {
         // Simulate ticket validation logic
         if (data.startsWith('TICKET:')) {
-          // Successful scan
+          // Successful scan - only show data for validation, don't add to logs yet
           const ticketData = JSON.parse(data.replace('TICKET:', ''));
-          setPassengerDetails({
+          const passengerInfo = {
             name: ticketData.name || 'Unknown',
             start: ticketData.start || 'Unknown',
             end: ticketData.end || 'Unknown',
@@ -104,50 +104,58 @@ export default function QRScannerScreen() {
             seatNumber: ticketData.seat || 'Not assigned',
             paymentStatus: ticketData.paid ? 'Paid' : 'Unpaid',
             ticketId: ticketData.id || 'Unknown'
-          });
+          };
           
+          setPassengerDetails(passengerInfo);
+          setPendingQRData(data); // Store for validation
           setScanStatus('success');
-          
-          // Add to recent scans
-          setRecentScans(prevScans => [
-            {
-              id: Date.now().toString(),
-              name: ticketData.name,
-              seatNumber: ticketData.seat,
-              status: 'success',
-              timestamp: new Date(),
-              ticketId: ticketData.id
-            },
-            ...prevScans.slice(0, 9) // Keep only the 10 most recent scans
-          ]);
         } else {
-          // Failed scan
+          // Failed scan - add immediately to logs as failed
           setScanStatus('failed');
           setPassengerDetails(null);
+          setPendingQRData(null);
           
-          // Add to recent scans
-          setRecentScans(prevScans => [
-            {
-              id: Date.now().toString(),
-              status: 'failed',
-              timestamp: new Date()
-            },
-            ...prevScans.slice(0, 9)
-          ]);
+          // Add failed scan log to context immediately
+          const failedScanLog: QRScanLog = {
+            id: Date.now().toString(),
+            name: 'Invalid QR',
+            qrCode: data,
+            ticketId: '',
+            startStation: '',
+            endStation: '',
+            seatNumber: '',
+            passengerCount: 0,
+            ticketFee: 0,
+            paymentStatus: '',
+            scanTime: new Date(),
+            status: 'failed'
+          };
+          
+          addQRScanLog(failedScanLog);
         }
       } catch (error) {
-        // Handle parsing error
+        // Handle parsing error - add immediately to logs as failed
         setScanStatus('failed');
         setPassengerDetails(null);
+        setPendingQRData(null);
         
-        setRecentScans(prevScans => [
-          {
-            id: Date.now().toString(),
-            status: 'failed',
-            timestamp: new Date()
-          },
-          ...prevScans.slice(0, 9)
-        ]);
+        // Add failed scan log to context immediately
+        const errorScanLog: QRScanLog = {
+          id: Date.now().toString(),
+          name: 'Parse Error',
+          qrCode: data,
+          ticketId: '',
+          startStation: '',
+          endStation: '',
+          seatNumber: '',
+          passengerCount: 0,
+          ticketFee: 0,
+          paymentStatus: '',
+          scanTime: new Date(),
+          status: 'failed'
+        };
+        
+        addQRScanLog(errorScanLog);
       }
       
       // Enable scanning again after a delay
@@ -167,18 +175,48 @@ export default function QRScannerScreen() {
     setScanning(true);
     setScanStatus('ready');
     setPassengerDetails(null);
+    setPendingQRData(null);
   };
 
   // Handle ticket validation
   const handleValidateTicket = () => {
-    if (!passengerDetails) return;
+    if (!passengerDetails || !pendingQRData) return;
     
-    // Here you would implement the actual validation logic
-    Alert.alert(
-      "Ticket Validated",
-      `${passengerDetails.name}'s ticket has been successfully validated.`,
-      [{ text: "OK", onPress: resetScanner }]
-    );
+    try {
+      // Parse the pending QR data again to create the log entry
+      const ticketData = JSON.parse(pendingQRData.replace('TICKET:', ''));
+      
+      // Add to context scan logs only when validated
+      const scanLog: QRScanLog = {
+        id: Date.now().toString(),
+        name: ticketData.name || 'Unknown',
+        qrCode: pendingQRData,
+        ticketId: ticketData.id || 'Unknown',
+        startStation: ticketData.start || 'Unknown',
+        endStation: ticketData.end || 'Unknown',
+        seatNumber: ticketData.seat || 'Not assigned',
+        passengerCount: ticketData.passengerCount || 1,
+        ticketFee: ticketData.ticketFee || 0,
+        paymentStatus: ticketData.paid ? 'Paid' : 'Unpaid',
+        scanTime: new Date(),
+        status: 'success'
+      };
+      
+      addQRScanLog(scanLog);
+      
+      // Show success message and reset scanner
+      Alert.alert(
+        "Ticket Validated",
+        `${passengerDetails.name}'s ticket has been successfully validated and logged.`,
+        [{ text: "OK", onPress: resetScanner }]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Validation Error",
+        "There was an error validating the ticket. Please try scanning again.",
+        [{ text: "OK", onPress: resetScanner }]
+      );
+    }
   };
   
   // View scan history
@@ -395,11 +433,11 @@ export default function QRScannerScreen() {
         
         {/* Scan History Button */}
         <TouchableOpacity 
-          style={styles.historyButton} 
+          // style={styles.historyButton} 
           onPress={handleViewScanHistory}
         >
-          <Ionicons name="time" size={20} color="#555" />
-          <Text style={styles.historyButtonText}>Scan History</Text>
+          {/* <Ionicons name="time" size={20} color="#555" /> */}
+          {/* <Text style={styles.historyButtonText}>Scan History</Text> */}
         </TouchableOpacity>
         
         {/* Recent Scans */}

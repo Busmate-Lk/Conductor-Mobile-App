@@ -1,3 +1,4 @@
+import { useTicket } from '@/contexts/TicketContext';
 import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -15,17 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-// Define QR Log interface
-interface QRLog {
-  id: string;
-  name: string;
-  qrCode: string;
-  from: string;
-  to: string;
-  scanTime: string;
-  fare: number;
-}
 
 // Helper functions for status display
 function getStatusColor(status: string): string {
@@ -60,7 +50,17 @@ function getStatusDisplayText(status: string): string {
 
 export default function TripReportScreen() {
   const { ongoingTrip, endTrip, endingTrip } = useOngoingTrip();
+  const { qrScanLogs, getQRScanLogsForTrip } = useTicket();
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [showAllLogs, setShowAllLogs] = useState(false);
+
+  // Get QR scan logs for this trip
+  const tripQRLogs = getQRScanLogsForTrip();
+  
+  // Calculate QR revenue from successful scans
+  const qrRevenue = tripQRLogs
+    .filter(log => log.status === 'success')
+    .reduce((total, log) => total + log.ticketFee, 0);
 
   // If no ongoing trip, show message
   if (!ongoingTrip) {
@@ -96,15 +96,15 @@ export default function TripReportScreen() {
       status: ongoingTrip.status
     },
     summary: {
-      totalPassengers: ongoingTrip.passengers || 0,
-      ticketsIssued: 0, // Will be populated by API later
-      qrRevenue: 0, // Will be populated by API later
+      totalPassengers: tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.passengerCount, 0),
+      ticketsIssued: tripQRLogs.filter(log => log.status === 'success').length,
+      qrRevenue: qrRevenue,
       cashRevenue: ongoingTrip.revenue || 0,
       duration: calculateTripDuration(ongoingTrip.startTime, ongoingTrip.endTime)
     },
-    qrLogs: [] as QRLog[], // Will be populated by API later
-    totalQrLogs: 0,
-    totalRevenue: ongoingTrip.revenue || 0
+    qrLogs: tripQRLogs,
+    totalQrLogs: tripQRLogs.length,
+    totalRevenue: (ongoingTrip.revenue || 0) + qrRevenue
   };
 
   // Calculate trip duration
@@ -167,7 +167,7 @@ export default function TripReportScreen() {
   };
 
   const handleViewAllLogs = () => {
-    
+    setShowAllLogs(!showAllLogs);
   };
 
   return (
@@ -263,7 +263,7 @@ export default function TripReportScreen() {
             {/* QR Revenue */}
             <View style={[styles.statCard, { backgroundColor: '#FFF8E6' }]}>
               <MaterialCommunityIcons name="qrcode-scan" size={22} color="#F5A623" />
-              <Text style={styles.statValue}>Rs. {tripData.summary.qrRevenue.toLocaleString()}</Text>
+              <Text style={styles.statValue}>Rs. {tripData.summary.qrRevenue.toLocaleString()}.00</Text>
               <Text style={styles.statLabel}>QR Revenue</Text>
             </View>
 
@@ -287,48 +287,62 @@ export default function TripReportScreen() {
 
           {tripData.qrLogs.length > 0 ? (
             <>
-              {tripData.qrLogs.map((log) => (
+              {(showAllLogs ? tripData.qrLogs : tripData.qrLogs.slice(0, 3)).map((log) => (
                 <View key={log.id} style={styles.logItem}>
                   <View style={styles.logHeader}>
                     <Text style={styles.passengerName}>{log.name}</Text>
-                    <View style={styles.successIndicator}>
-                      <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                    <View style={log.status === 'success' ? styles.successIndicator : styles.failedIndicator}>
+                      <Ionicons 
+                        name={log.status === 'success' ? "checkmark-circle" : "close-circle"} 
+                        size={18} 
+                        color={log.status === 'success' ? "#22C55E" : "#FF3B30"} 
+                      />
                     </View>
                   </View>
                   
-                  <Text style={styles.qrCode}>{log.qrCode}</Text>
+                  <Text style={styles.qrCode}>{log.ticketId}</Text>
                   
                   <View style={styles.logDetailsRow}>
                     <View style={styles.logDetail}>
                       <Text style={styles.logDetailLabel}>From:</Text>
-                      <Text style={styles.logDetailValue}>{log.from}</Text>
+                      <Text style={styles.logDetailValue}>{log.startStation}</Text>
                     </View>
                     <View style={styles.logDetail}>
                       <Text style={styles.logDetailLabel}>To:</Text>
-                      <Text style={styles.logDetailValue}>{log.to}</Text>
+                      <Text style={styles.logDetailValue}>{log.endStation}</Text>
                     </View>
                   </View>
                   
                   <View style={styles.logDetailsRow}>
                     <View style={styles.logDetail}>
                       <Text style={styles.logDetailLabel}>Scan:</Text>
-                      <Text style={styles.logDetailValue}>{log.scanTime}</Text>
+                      <Text style={styles.logDetailValue}>
+                        {log.scanTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
                     </View>
                     <View style={styles.logDetail}>
                       <Text style={styles.logDetailLabel}>Fare:</Text>
-                      <Text style={styles.fareValue}>Rs. {log.fare}</Text>
+                      <Text style={styles.fareValue}>Rs. {log.ticketFee}0</Text>
                     </View>
                   </View>
                 </View>
               ))}
               
-              <TouchableOpacity 
-                style={styles.viewAllButton} 
-                onPress={handleViewAllLogs}
-              >
-                <Text style={styles.viewAllText}>View All Logs ({tripData.totalQrLogs})</Text>
-                <Ionicons name="chevron-down" size={16} color="#0066FF" />
-              </TouchableOpacity>
+              {tripData.qrLogs.length > 3 && (
+                <TouchableOpacity 
+                  style={styles.viewAllButton} 
+                  onPress={handleViewAllLogs}
+                >
+                  <Text style={styles.viewAllText}>
+                    {showAllLogs ? 'Show Less' : `View All Logs (${tripData.totalQrLogs})`}
+                  </Text>
+                  <Ionicons 
+                    name={showAllLogs ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color="#0066FF" 
+                  />
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             <View style={styles.noLogsContainer}>
@@ -344,7 +358,7 @@ export default function TripReportScreen() {
         {/* Total Revenue */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Total Revenue</Text>
-          <Text style={styles.totalRevenueValue}>Rs. {tripData.totalRevenue.toLocaleString()}</Text>
+          <Text style={styles.totalRevenueValue}>Rs. {tripData.totalRevenue.toLocaleString()}.00</Text>
         </View>
 
         {/* End Trip Button */}
@@ -599,6 +613,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   successIndicator: {
+    padding: 2,
+  },
+  failedIndicator: {
     padding: 2,
   },
   qrCode: {

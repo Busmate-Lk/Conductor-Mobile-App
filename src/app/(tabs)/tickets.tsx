@@ -1,4 +1,4 @@
-import { useTicket, CashTicketLog } from '@/contexts/TicketContext';
+import { CashTicketLog, useTicket } from '@/contexts/TicketContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';

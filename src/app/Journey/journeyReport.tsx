@@ -1,4 +1,4 @@
-import { useTicket, QRScanLog, CashTicketLog } from '@/contexts/TicketContext';
+import { useTicket } from '@/contexts/TicketContext';
 import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';

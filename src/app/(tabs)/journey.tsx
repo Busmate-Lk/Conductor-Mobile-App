@@ -1,3 +1,4 @@
+import { useTicket } from '@/contexts/TicketContext';
 import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { useSeatView } from '@/hooks/Journey/useSeatView';
@@ -24,8 +25,32 @@ import {
 function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
   const { endTrip, endingTrip } = useOngoingTrip();
   const { stats, tripData } = useSeatView();
+  const { qrScanLogs, getQRScanLogsForTrip, cashTicketLogs, getCashTicketLogsForTrip } = useTicket();
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
+
+  // Get ticket data for this trip
+  const tripQRLogs = getQRScanLogsForTrip();
+  const tripCashTickets = getCashTicketLogsForTrip();
+  
+  // Calculate dynamic trip statistics
+  const dynamicStats = {
+    // Total passengers from both QR scans and physical tickets
+    totalPassengers: 
+      tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.passengerCount, 0) +
+      tripCashTickets.reduce((total, ticket) => total + ticket.passengerCount, 0),
+    
+    // Validated tickets (QR scanned and validated)
+    validatedTickets: tripQRLogs.filter(log => log.status === 'success').length,
+    
+    // Pending tickets (keeping as dummy for now as requested)
+    pendingTickets: stats?.bookedNotValidated || 0,
+    
+    // Total revenue from both sources
+    totalRevenue: 
+      tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.ticketFee, 0) +
+      tripCashTickets.reduce((total, ticket) => total + ticket.fareAmount, 0)
+  };
 
   // Handle end trip
   const handleEndTrip = async () => {
@@ -130,6 +155,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
             </View>
             <Text style={styles.actionLabel}>Bookings</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity style={styles.actionItem}
            onPress={() => { router.push('/Journey/stopView'); }}
           >
@@ -138,47 +164,56 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
             </View>
             <Text style={styles.actionLabel}>Stop View</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionItem}
+           onPress={() => { router.push('/Journey/ticketLogs'); }}
+          >
+            <View style={styles.actionIconContainer}>
+              <FontAwesome5 name="ticket-alt" size={18} color="#0066FF" />
+            </View>
+            <Text style={styles.actionLabel}>Tickets</Text>
+          </TouchableOpacity>
         </View>
       </View>
       
-      {/* Trip Summary - using real data */}
+      {/* Trip Summary - using dynamic data from tickets and QR scans */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Trip Summary So far.....</Text>
         
         <View style={styles.summaryGrid}>
-          {/* Passenger Count */}
+          {/* Total Passenger Count - Dynamic from QR + Physical tickets */}
           <View style={[styles.summaryItem, {backgroundColor: '#F0F6FF'}]}>
             <View style={styles.summaryIconContainer}>
               <Ionicons name="people" size={20} color="#0066FF" />
             </View>
-            <Text style={styles.summaryValue}>{stats?.bookedValidated + stats?.bookedNotValidated || 0}</Text>
+            <Text style={styles.summaryValue}>{dynamicStats.totalPassengers}</Text>
             <Text style={styles.summaryLabel}>Total Passengers</Text>
           </View>
           
-          {/* Validated Tickets */}
+          {/* Validated Tickets - Dynamic from QR scans */}
           <View style={[styles.summaryItem, {backgroundColor: '#F0FFF6'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
               <Ionicons name="receipt-outline" size={20} color="#00CC66" />
             </View>
-            <Text style={styles.summaryValue}>{stats?.bookedValidated || 0}</Text>
-            <Text style={styles.summaryLabel}>Validated Tickets</Text>
+            <Text style={styles.summaryValue}>{dynamicStats.validatedTickets}</Text>
+            <Text style={styles.summaryLabel}>Validated QR Tickets</Text>
           </View>
           
-          {/* Pending Tickets */}
+          {/* Pending Tickets - Keeping as dummy for now */}
           <View style={[styles.summaryItem, {backgroundColor: '#FFFBF0'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#FFF8E6'}]}>
               <MaterialIcons name="pending" size={20} color="#FF9500" />
             </View>
-            <Text style={styles.summaryValue}>{stats?.bookedNotValidated || 0}</Text>
+            <Text style={styles.summaryValue}>{dynamicStats.pendingTickets}</Text>
             <Text style={styles.summaryLabel}>Pending Tickets</Text>
           </View>
           
-          {/* Total Revenue */}
+          {/* Total Revenue - Dynamic from both sources */}
           <View style={[styles.summaryItem, {backgroundColor: '#F9F0FF'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
               <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
             </View>
-            <Text style={styles.summaryValue}>Rs. {trip.revenue || 0}</Text>
+            <Text style={styles.summaryValue}>Rs. {dynamicStats.totalRevenue.toLocaleString()}</Text>
             <Text style={styles.summaryLabel}>Total Revenue</Text>
           </View>
         </View>
@@ -202,6 +237,23 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
             return `${h}h ${m}m`;
             })()}
           </Text>
+        </View>
+        
+        {/* Ticket Breakdown */}
+        <View style={styles.ticketBreakdownContainer}>
+          <Text style={styles.ticketBreakdownTitle}>Ticket Breakdown</Text>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Physical Tickets:</Text>
+            <Text style={styles.breakdownValue}>
+              {tripCashTickets.length} tickets ({tripCashTickets.reduce((total, ticket) => total + ticket.passengerCount, 0)} passengers)
+            </Text>
+          </View>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>QR Validated:</Text>
+            <Text style={styles.breakdownValue}>
+              {dynamicStats.validatedTickets} tickets ({tripQRLogs.filter(log => log.status === 'success').reduce((total, log) => total + log.passengerCount, 0)} passengers)
+            </Text>
+          </View>
         </View>
       </View>
       
@@ -517,15 +569,16 @@ const styles = StyleSheet.create({
   quickActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   actionItem: {
-    flex: 1,
+    width: '30%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
-    margin: 8,
+    margin: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -588,6 +641,41 @@ const styles = StyleSheet.create({
   durationValue: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  ticketBreakdownContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  ticketBreakdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#333',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  breakdownValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+    textAlign: 'right',
   },
   // No trip view styles
   noTripContainer: {

@@ -215,10 +215,10 @@ export default function EmployeeScheduleCard({ item }: Props) {
         {item.status === 'completed' && (
           <>
             <TouchableOpacity 
-              style={styles.secondaryButton}
+              // style={styles.secondaryButton}
               onPress={() => router.push(`/Journey/journeyReport?id=${item.id}`)}
             >
-              <Text style={styles.secondaryButtonText}>View Report</Text>
+              {/* <Text style={styles.secondaryButtonText}>View Report</Text> */}
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.secondaryButton}
@@ -231,10 +231,10 @@ export default function EmployeeScheduleCard({ item }: Props) {
 
         {item.status === 'cancelled' && (
           <TouchableOpacity 
-            style={styles.secondaryButton}
+            // style={styles.secondaryButton}
             onPress={() => router.push(`/Journey/trip_details?id=${item.id}`)}
           >
-            <Text style={styles.secondaryButtonText}>View Details</Text>
+            {/* <Text style={styles.secondaryButtonText}>View Details</Text> */}
           </TouchableOpacity>
         )}
       </View>

@@ -110,8 +110,8 @@ class ApiClient {
     const normalizedEndpoint = endpoint.replace(/^\/+/g, '');  // remove leading slashes
     const fullUrl = `${normalizedBase}/${normalizedEndpoint}`;
     
-    console.log('🔐 Making authenticated API request to:', fullUrl, `(Service: ${serviceType})`);
-    console.log('📝 Request options:', JSON.stringify(options, null, 2));
+    console.log(' Making authenticated API request to:', fullUrl, `(Service: ${serviceType})`);
+    console.log(' Request options:', JSON.stringify(options, null, 2));
     const token = await this.getAuthToken();
     
     if (!token) {

@@ -371,14 +371,14 @@ export default function TripReportScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
+        {/* <View style={styles.actionButtonsContainer}>
           <TouchableOpacity 
             style={[styles.actionButton, styles.pdfButton]} 
             onPress={handleExportPDF}
           >
             <Ionicons name="document-text" size={18} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Export PDF</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           
           {/* <TouchableOpacity 
             style={[styles.actionButton, styles.csvButton]} 
@@ -388,14 +388,14 @@ export default function TripReportScreen() {
             <Text style={styles.actionButtonText}>Download CSV</Text>
           </TouchableOpacity> */}
           
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={[styles.actionButton, styles.emailButton]} 
             onPress={handleEmailReport}
           >
             <Ionicons name="mail" size={18} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Email Report</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
         
         {/* Bottom spacing */}
         <View style={styles.bottomSpace} />

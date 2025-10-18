@@ -1,10 +1,12 @@
-import { TicketDetails, useTicket } from '@/contexts/TicketContext';
+import { useTicket } from '@/contexts/TicketContext';
+import { ticketApi } from '@/services/api/ticket';
+import { TicketDetails } from '@/types/ticket';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -18,7 +20,9 @@ import {
 } from 'react-native';
 
 export default function TicketConfirmationScreen() {
-  const { ticketData } = useTicket();
+  const { ticketData, ticketBackendData } = useTicket();
+  const [isStoring, setIsStoring] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<'pending' | 'success' | 'error'>('pending');
 
   // Use context data or fallback to sample data
   const ticket: TicketDetails = ticketData || {
@@ -32,6 +36,39 @@ export default function TicketConfirmationScreen() {
     issuedOn: 'Dec 15, 2024 - 2:35 PM',
     phoneNumber: '+94 77 123 4567'
   };
+
+  // Store ticket to database when page loads
+  useEffect(() => {
+    const storeTicketToDatabase = async () => {
+      if (!ticketBackendData) {
+        console.warn('⚠️ No backend data available for ticket storage');
+        setStorageStatus('error');
+        return;
+      }
+
+      console.log('💾 Storing ticket to database...', ticketBackendData);
+      setIsStoring(true);
+
+      try {
+        const result = await ticketApi.issueTicket(ticketBackendData);
+        
+        if (result.success) {
+          console.log('✅ Ticket successfully stored:', result.message);
+          setStorageStatus('success');
+        } else {
+          console.error('Failed to store ticket:', result.message);
+          setStorageStatus('error');
+        }
+      } catch (error) {
+        console.error(' Error storing ticket:', error);
+        setStorageStatus('error');
+      } finally {
+        setIsStoring(false);
+      }
+    };
+
+    storeTicketToDatabase();
+  }, [ticketBackendData]);
 
   // Generate HTML for PDF
   const generateTicketHTML = () => {

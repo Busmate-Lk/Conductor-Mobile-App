@@ -1,4 +1,5 @@
 import { useTicket } from '@/contexts/TicketContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -18,14 +19,17 @@ import {
 import { useOngoingTrip } from '../../hooks/employee/useOngoingTrip';
 import { journeyApi } from '../../services/api/journey';
 import { RouteStop } from '../../types/journey';
+import { IssueTicketRequest } from '../../types/ticket';
 
 export default function TicketsScreen() {
   const { 
     setTicketData, 
+    setTicketBackendData,
     routeStopsCache, 
     setRouteStopsCache, 
     isRouteStopsCacheValid 
   } = useTicket();
+  const { user } = useAuth();
   const { ongoingTrip } = useOngoingTrip();
   
   // State for route stops
@@ -44,6 +48,7 @@ export default function TicketsScreen() {
   const [phoneNumber, setPhoneNumber] = useState('+94 77 123 4567');
   const [totalFare, setTotalFare] = useState(0);
   const [farePerPassenger, setFarePerPassenger] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
 
   // Dropdown states
   const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -214,7 +219,7 @@ export default function TicketsScreen() {
       minute: '2-digit'
     });
 
-    // Create ticket data object
+    // Create ticket data object for display
     const ticketData = {
       id: ticketId,
       from: fromLocation,
@@ -227,8 +232,27 @@ export default function TicketsScreen() {
       phoneNumber: phoneNumber || '+94 77 123 4567'
     };
 
-    // Store ticket data using context
+    // Find the route stops for start and end locations
+    const fromStop = routeStops.find(stop => stop.stopName === fromLocation);
+    const toStop = routeStops.find(stop => stop.stopName === toLocation);
+
+    // Create backend data for API
+    const backendData: IssueTicketRequest = {
+      conductorId:2222222222222222222,
+      busId: 1111111111111111111111,
+      tripId: 2234455555,
+      startLocationId: fromStop?.stopId || 'unknown',
+      endLocationId: toStop?.stopId || 'unknown',
+      fareAmount: totalFare,
+      paymentMethod: paymentMethod,
+      transactionRef: `TXN-${Date.now()}-${ticketId}`
+    };
+
+    // Store both display and backend data using context
     setTicketData(ticketData);
+    setTicketBackendData(backendData);
+
+    console.log('🎫 Ticket created with backend data:', backendData);
   };
 
   return (

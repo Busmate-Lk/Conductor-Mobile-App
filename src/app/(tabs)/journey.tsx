@@ -1,5 +1,6 @@
 import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
+import { useSeatView } from '@/hooks/Journey/useSeatView';
 import { EmployeeSchedule } from '@/types/employee';
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -22,6 +23,7 @@ import {
 // Component for ongoing trip view
 function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
   const { endTrip, endingTrip } = useOngoingTrip();
+  const { stats, tripData } = useSeatView();
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
 
@@ -48,32 +50,6 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
   const showEndTripConfirmation = () => {
     setShowEndModal(true);
   };
-
-  // Dummy stops data (keep existing dummy data as requested)
-  const stopsList = [
-    { id: 1, name: 'Matara', km: 0 },
-    { id: 2, name: 'Weligama', km: 15 },
-    { id: 3, name: 'Mirissa', km: 25 },
-    { id: 4, name: 'Galle', km: 45 },
-    { id: 5, name: 'Hikkaduwa', km: 65 },
-    { id: 6, name: 'Ambalangoda', km: 75 },
-    { id: 7, name: 'Bentota', km: 90 },
-    { id: 8, name: 'Kalutara', km: 110 },
-    { id: 9, name: 'Panadura', km: 125 },
-    { id: 10, name: 'Moratuwa', km: 140 },
-    { id: 11, name: 'Dehiwala', km: 150 },
-    { id: 12, name: 'Colombo', km: 160 }
-  ];
-
-  // Simple static data for next stop (dummy data)
-  const startStop = stopsList[0]; // Matara
-  const endStop = stopsList[stopsList.length - 1]; // Colombo
-  const nextStop = stopsList[5]; // Hikkaduwa as next stop
-  
-  // Time information based on stops data (dummy data)
-  const departureTime = "06:30 AM";
-  const arrivalTime = "10:30 AM";
-  const nextStopTime = "08:15 AM";
   
   return (
     <>
@@ -120,20 +96,6 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
           </View>
         </View>
         
-        {/* Journey Progress - dummy data as requested */}
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressLabel}>
-            Journey Progress: {Math.round((nextStop.km / endStop.km) * 100)}%
-          </Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${Math.round((nextStop.km / endStop.km) * 100)}%` }]} />
-          </View>
-          <View style={styles.progressInfo}>
-            <Text style={styles.progressText}>{nextStop.km} km</Text>
-            <Text style={styles.progressText}>{endStop.km} km</Text>
-          </View>
-        </View>
-        
         {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity style={[styles.startButton, { opacity: 0.5 }]} disabled>
@@ -153,27 +115,6 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
               <Text style={styles.endButtonText}>End Trip</Text>
             )}
           </TouchableOpacity>
-        </View>
-      </View>
-      
-      {/* Next Stop - dummy data as requested */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Next Stop</Text>
-        <View style={styles.nextStopContainer}>
-          <View style={styles.nextStopLeft}>
-            <View style={styles.nextStopIconContainer}>
-              <Ionicons name="location" size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.nextStopDetails}>
-              <Text style={styles.nextStopName}>{nextStop.name}</Text>
-              <Text style={styles.expectedTime}>Expected: {nextStopTime}</Text>
-              <Text style={styles.expectedTime}>{nextStop.km} km from start</Text>
-            </View>
-          </View>
-          <View style={styles.nextStopRight}>
-            <Text style={styles.remainingTime}>30 min</Text>
-            <Text style={styles.remainingLabel}>remaining</Text>
-          </View>
         </View>
       </View>
       
@@ -200,7 +141,7 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
         </View>
       </View>
       
-      {/* Trip Summary - dummy data as requested */}
+      {/* Trip Summary - using real data */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Trip Summary So far.....</Text>
         
@@ -210,35 +151,35 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
             <View style={styles.summaryIconContainer}>
               <Ionicons name="people" size={20} color="#0066FF" />
             </View>
-            <Text style={styles.summaryValue}>54</Text>
+            <Text style={styles.summaryValue}>{stats?.bookedValidated + stats?.bookedNotValidated || 0}</Text>
             <Text style={styles.summaryLabel}>Total Passengers</Text>
           </View>
           
-          {/* Tickets Issued */}
+          {/* Validated Tickets */}
           <View style={[styles.summaryItem, {backgroundColor: '#F0FFF6'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#E6FFF2'}]}>
               <Ionicons name="receipt-outline" size={20} color="#00CC66" />
             </View>
-            <Text style={styles.summaryValue}>65</Text>
-            <Text style={styles.summaryLabel}>Tickets Issued</Text>
+            <Text style={styles.summaryValue}>{stats?.bookedValidated || 0}</Text>
+            <Text style={styles.summaryLabel}>Validated Tickets</Text>
           </View>
           
-          {/* QR Revenue */}
+          {/* Pending Tickets */}
           <View style={[styles.summaryItem, {backgroundColor: '#FFFBF0'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#FFF8E6'}]}>
-              <MaterialIcons name="qr-code" size={20} color="#FF9500" />
+              <MaterialIcons name="pending" size={20} color="#FF9500" />
             </View>
-            <Text style={styles.summaryValue}>Rs. 3,240</Text>
-            <Text style={styles.summaryLabel}>QR Revenue</Text>
+            <Text style={styles.summaryValue}>{stats?.bookedNotValidated || 0}</Text>
+            <Text style={styles.summaryLabel}>Pending Tickets</Text>
           </View>
           
-          {/* Cash Revenue */}
+          {/* Total Revenue */}
           <View style={[styles.summaryItem, {backgroundColor: '#F9F0FF'}]}>
             <View style={[styles.summaryIconContainer, {backgroundColor: '#F6E6FF'}]}>
               <FontAwesome5 name="money-bill-wave" size={16} color="#BF5AF2" />
             </View>
-            <Text style={styles.summaryValue}>Rs. 1,890</Text>
-            <Text style={styles.summaryLabel}>Cash Revenue</Text>
+            <Text style={styles.summaryValue}>Rs. {trip.revenue || 0}</Text>
+            <Text style={styles.summaryLabel}>Total Revenue</Text>
           </View>
         </View>
         
@@ -247,17 +188,14 @@ function OngoingTripView({ trip }: { trip: EmployeeSchedule }) {
           <Text style={styles.durationLabel}>Trip Duration</Text>
           <Text style={styles.durationValue}>
             {(() => {
-            // Parse times in "hh:mm AM/PM" format
+            // Calculate duration from trip start and end times
             const parseTime = (timeStr: string) => {
-              const [time, modifier] = timeStr.split(' ');
-              let [hours, minutes] = time.split(':').map(Number);
-              if (modifier === 'PM' && hours !== 12) hours += 12;
-              if (modifier === 'AM' && hours === 12) hours = 0;
+              const [hours, minutes] = timeStr.split(':').map(Number);
               return hours * 60 + minutes;
             };
-            const depMins = parseTime(departureTime);
-            const arrMins = parseTime(arrivalTime);
-            let diff = arrMins - depMins;
+            const startMins = parseTime(trip.startTime);
+            const endMins = parseTime(trip.endTime);
+            let diff = endMins - startMins;
             if (diff < 0) diff += 24 * 60; // handle overnight trips
             const h = Math.floor(diff / 60);
             const m = diff % 60;
@@ -385,27 +323,6 @@ export default function JourneyScreen() {
   const navigateToSchedules = () => {
     router.push('/Journey/schedules');
   };
-  
-  // Dummy stops data
-  const stopsList = [
-    { id: 1, name: 'Matara', km: 0 },
-    { id: 2, name: 'Weligama', km: 15 },
-    { id: 3, name: 'Mirissa', km: 25 },
-    { id: 4, name: 'Galle', km: 45 },
-    { id: 5, name: 'Hikkaduwa', km: 65 },
-    { id: 6, name: 'Ambalangoda', km: 75 },
-    { id: 7, name: 'Bentota', km: 90 },
-    { id: 8, name: 'Kalutara', km: 110 },
-    { id: 9, name: 'Panadura', km: 125 },
-    { id: 10, name: 'Moratuwa', km: 140 },
-    { id: 11, name: 'Dehiwala', km: 150 },
-    { id: 12, name: 'Colombo', km: 160 }
-  ];
-
-  // Simple static data for next stop
-  const startStop = stopsList[0]; // Matara
-  const endStop = stopsList[stopsList.length - 1]; // Colombo
-  const nextStop = stopsList[4]; // Hikkaduwa as next stop
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -597,50 +514,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  nextStopContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F0F6FF',
-    borderWidth: 1,
-    borderColor: '#0066FF',
-    borderRadius: 12,
-    padding: 16,
-  },
-  nextStopLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  nextStopIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0066FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  nextStopDetails: {
-    flex: 1,
-  },
-  nextStopName: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  nextStopRight: {
-    alignItems: 'center',
-  },
-  remainingTime: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0066FF',
-  },
-  remainingLabel: {
-    fontSize: 10,
-    color: '#666',
-  },
   quickActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -715,36 +588,6 @@ const styles = StyleSheet.create({
   durationValue: {
     fontSize: 18,
     fontWeight: '700',
-  },
-  progressContainer: {
-    marginVertical: 16,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 3,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#0066FF',
-    borderRadius: 3,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#666',
   },
   // No trip view styles
   noTripContainer: {

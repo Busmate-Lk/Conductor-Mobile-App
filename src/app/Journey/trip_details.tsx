@@ -254,7 +254,7 @@ export default function TripDetailsScreen() {
             </View>
 
             {/* Trip IDs Card (for debugging/reference) */}
-            <View style={styles.idsCard}>
+            {/* <View style={styles.idsCard}>
               <Text style={styles.idsTitle}>Trip Information</Text>
               <View style={styles.idRow}>
                 <Text style={styles.idLabel}>Trip ID:</Text>
@@ -272,7 +272,7 @@ export default function TripDetailsScreen() {
                   <Text style={styles.idValue}>{tripData.RouteId}</Text>
                 </View>
               )}
-            </View>
+            </View> */}
             
             {/* Content Header */}
             <View style={styles.contentHeader}>

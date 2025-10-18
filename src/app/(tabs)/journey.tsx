@@ -3,7 +3,7 @@ import { formatDate, formatTime } from '@/hooks/employee/useNextTrip';
 import { useOngoingTrip } from '@/hooks/employee/useOngoingTrip';
 import { useSeatView } from '@/hooks/Journey/useSeatView';
 import { EmployeeSchedule } from '@/types/employee';
-import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
